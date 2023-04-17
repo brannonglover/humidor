@@ -36,7 +36,6 @@ function AddFaveCigar({ toggleAddWindow }) {
   })
 
   function addFavorite() {
-    debugger
     addCigar(cigarBrand, cigarName, cigarDescription, cigarWrapper, cigarBinder, cigarFiller, cigarSize, cigarImage)
 
     setCigarBrand("")
@@ -79,9 +78,7 @@ function AddFaveCigar({ toggleAddWindow }) {
       cigarArr.push({ label: cigar.name, value: cigar.name })
     });
     const cleanArr = cigarArr.filter((item, index, self) => {
-      debugger
       index === self.findIndex(n => {
-        debugger
         n.label === item.label
       })
     });
@@ -105,6 +102,8 @@ function AddFaveCigar({ toggleAddWindow }) {
     }
     setCigarSizeArr(cigarArr);
   }
+
+  console.log(cigarNameArr);
   
   return (
     <>

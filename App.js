@@ -17,8 +17,8 @@ function App() {
   
   return (
     <ApolloProvider client={client}>
-      <SafeAreaView style={addFaveCigar ? styles.modalBg : ""}>
-        <Text style={styles.mainTitle}>My Cigars</Text>
+      <SafeAreaView style={[styles.container, addFaveCigar ? styles.modalBg : ""]}>
+        <Text style={styles.mainTitle}>Humidor</Text>
         <CigarList />
       </SafeAreaView>
       <AddCigarBtn bgColor='red' shape='round' setAddFaveCigar={setAddFaveCigar} />
@@ -30,6 +30,9 @@ function App() {
 export default App;
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1
+  },
   mainTitle: {
     fontFamily: 'Verdana',
     fontSize: 25,
@@ -37,6 +40,7 @@ const styles = StyleSheet.create({
   },
   modalBg: {
     backgroundColor: 'rgba(0,0,0,.5)',
-    height: '100%'
+    height: '100%',
+    width: '100%'
   }
 });
