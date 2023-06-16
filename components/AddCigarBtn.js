@@ -1,12 +1,11 @@
 import { Text, View, Pressable, StyleSheet } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
-import { faPlus } from '@fortawesome/free-solid-svg-icons'
+import { AntDesign } from '@expo/vector-icons';
 
 function AddCigarBtn({ setAddFaveCigar }) {
   return (
     <Pressable style={[styles.btnContainer, styles.boxShadow]} onPress={setAddFaveCigar}>
       <View style={styles.btnIconContainer}>
-        <FontAwesomeIcon icon={faPlus} size={30} color={'#fff'} />
+        <AntDesign name="pluscircle" size={51} color="red" iconStyle="#fff" />
       </View>
     </Pressable>
   )
@@ -22,7 +21,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: 'red',
   },
   boxShadow: {
     shadowColor: 'black',
