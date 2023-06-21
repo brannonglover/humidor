@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const FavoritesSchema = new mongoose.Schema({
+const DislikesSchema = new mongoose.Schema({
   id: {
     type: Number
   },
@@ -26,8 +26,8 @@ const FavoritesSchema = new mongoose.Schema({
     type: String
   },
   size: {
-    type: String
+    type: Object
   }
 });
 
-module.exports = mongoose.model('Favorite', FavoritesSchema);
+module.exports = mongoose.model('Dislike', DislikesSchema);

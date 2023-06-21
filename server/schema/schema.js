@@ -1,5 +1,7 @@
 const Cigar = require('../models/Cigar');
 const Favorites = require('../models/Favorites');
+const Humidor = require('../models/Humidor');
+const Dislikes = require('../models/Dislikes');
 
 const {
   GraphQLObjectType,
@@ -9,8 +11,38 @@ const {
   GraphQLList,
 } = require('graphql');
 
+const HumidorType = new GraphQLObjectType({
+  name: 'Humidor',
+  fields: () => ({
+    id: { type: GraphQLID },
+    name: { type: GraphQLString },
+    brand: { type: GraphQLString },
+    description: { type: GraphQLString },
+    wrapper: { type: GraphQLString },
+    binder: { type: GraphQLString },
+    filler: { type: GraphQLString },
+    image: { type: GraphQLString },
+    size: { type: GraphQLString }
+  })
+});
+
 const FavoriteType = new GraphQLObjectType({
   name: 'Favorite',
+  fields: () => ({
+    id: { type: GraphQLID },
+    name: { type: GraphQLString },
+    brand: { type: GraphQLString },
+    description: { type: GraphQLString },
+    wrapper: { type: GraphQLString },
+    binder: { type: GraphQLString },
+    filler: { type: GraphQLString },
+    image: { type: GraphQLString },
+    size: { type: GraphQLString }
+  })
+});
+
+const DislikeType = new GraphQLObjectType({
+  name: 'Dislike',
   fields: () => ({
     id: { type: GraphQLID },
     name: { type: GraphQLString },
@@ -69,10 +101,16 @@ const RootQuery = new GraphQLObjectType({
         return Favorites.find();
       }
     },
-    favorite: {
-      type: FavoriteType,
+    humidor: {
+      type: new GraphQLList(HumidorType),
       resolve(parent, args) {
-        return Favorites.findById(args.id);
+        return Humidor.find();
+      }
+    },
+    dislikes: {
+      type: new GraphQLList(DislikeType),
+      resolve(parent, args) {
+        return Dislikes.find();
       }
     }
   }
@@ -81,7 +119,33 @@ const RootQuery = new GraphQLObjectType({
 const mutation = new GraphQLObjectType({
   name: 'Mutation',
   fields: {
-    addCigar: {
+    addToHumidor: {
+      type: HumidorType,
+      args: {
+        name: { type: GraphQLString },
+        brand: { type: GraphQLString },
+        description: { type: GraphQLString },
+        wrapper: { type: GraphQLString },
+        binder: { type: GraphQLString },
+        filler: { type: GraphQLString },
+        size: { type: GraphQLString },
+        image: { type: GraphQLString },
+      },
+      resolve(parent, args) {
+        let cigar = new Humidor({
+          name: args.name,
+          brand: args.brand,
+          description: args.description,
+          wrapper: args.wrapper,
+          binder: args.binder,
+          filler: args.filler,
+          size: args.size,
+          image: args.image,
+        });
+        return cigar.save();
+      }
+    },
+    addFavorite: {
       type: FavoriteType,
       args: {
         name: { type: GraphQLString },
@@ -95,6 +159,32 @@ const mutation = new GraphQLObjectType({
       },
       resolve(parent, args) {
         let cigar = new Favorites({
+          name: args.name,
+          brand: args.brand,
+          description: args.description,
+          wrapper: args.wrapper,
+          binder: args.binder,
+          filler: args.filler,
+          size: args.size,
+          image: args.image,
+        });
+        return cigar.save();
+      }
+    },
+    addDislike: {
+      type: DislikeType,
+      args: {
+        name: { type: GraphQLString },
+        brand: { type: GraphQLString },
+        description: { type: GraphQLString },
+        wrapper: { type: GraphQLString },
+        binder: { type: GraphQLString },
+        filler: { type: GraphQLString },
+        size: { type: GraphQLString },
+        image: { type: GraphQLString },
+      },
+      resolve(parent, args) {
+        let cigar = new Dislikes({
           name: args.name,
           brand: args.brand,
           description: args.description,

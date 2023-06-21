@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const FavoritesSchema = new mongoose.Schema({
+const HumidorSchema = new mongoose.Schema({
   id: {
     type: Number
   },
@@ -30,4 +30,4 @@ const FavoritesSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('Favorite', FavoritesSchema);
+module.exports = mongoose.model('Humidor', HumidorSchema);

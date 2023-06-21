@@ -18,9 +18,39 @@ export const GET_ALL_CIGARS = gql`
   }
 `;
 
+export const GET_HUMIDOR_CIGARS = gql`
+  query getHumidorCigars {
+    humidor {
+      brand
+      name
+      wrapper
+      binder
+      filler
+      description
+      image
+      size
+    }
+  }
+`;
+
 export const GET_FAVORITE_CIGARS = gql`
   query getFavoriteCigars {
     favorites {
+      brand
+      name
+      wrapper
+      binder
+      filler
+      description
+      image
+      size
+    }
+  }
+`;
+
+export const GET_DISLIKED_CIGARS = gql`
+  query getDislikedCigars {
+    dislikes {
       brand
       name
       wrapper

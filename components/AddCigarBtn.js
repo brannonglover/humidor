@@ -1,9 +1,9 @@
 import { Text, View, Pressable, StyleSheet } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
 
-function AddCigarBtn({ setAddFaveCigar }) {
+function AddCigarBtn({ setHumidorModal }) {
   return (
-    <Pressable style={[styles.btnContainer, styles.boxShadow]} onPress={setAddFaveCigar}>
+    <Pressable style={[styles.btnContainer, styles.boxShadow]} onPress={setHumidorModal}>
       <View style={styles.btnIconContainer}>
         <AntDesign name="pluscircle" size={51} color="red" iconStyle="#fff" />
       </View>
@@ -19,11 +19,12 @@ const styles = StyleSheet.create({
     height: 50,
     width: 50,
     position: 'absolute',
-    bottom: 20,
+    bottom: 15,
     right: 20,
+    backgroundColor: '#fff'
   },
   boxShadow: {
-    shadowColor: 'black',
+    shadowColor: 'rgba(0,0,0,.3)',
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: .3,
   },
