@@ -1,0 +1,15 @@
+{
+    "database": "my_cigars",
+    "collection": "cigars",
+    "roles": [
+        {
+            "name": "default",
+            "apply_when": {},
+            "insert": true,
+            "delete": true,
+            "search": true,
+            "write": true,
+            "additional_fields": {}
+        }
+    ]
+}

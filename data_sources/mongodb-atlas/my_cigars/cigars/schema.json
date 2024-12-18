@@ -1,0 +1,29 @@
+{
+    "title": "cigar",
+    "properties": {
+        "_id": {
+            "bsonType": "objectId"
+        },
+        "name": {
+            "bsonType": "string"
+        },
+        "description": {
+            "bsonType": "string"
+        },
+        "brand": {
+            "bsonType": "string"
+        },
+        "wrapper": {
+            "bsonType": "string"
+        },
+        "binder": {
+            "bsonType": "string"
+        },
+        "filler": {
+            "bsonType": "string"
+        },
+        "image": {
+            "bsonType": "string"
+        }
+    }
+}
