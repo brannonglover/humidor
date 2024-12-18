@@ -1,0 +1,10 @@
+{
+    "name": "My_Cigars",
+    "type": "mongodb-atlas",
+    "config": {
+        "clusterName": "Cluster1",
+        "readPreference": "primary",
+        "wireProtocolEnabled": true
+    },
+    "version": 1
+}
