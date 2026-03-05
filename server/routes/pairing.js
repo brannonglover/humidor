@@ -1,11 +1,19 @@
 const express = require('express');
 const router = express.Router();
+const { createClient } = require('@supabase/supabase-js');
+const pool = require('../config/postgres');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
 /**
  * POST /api/pairing
  * Body: { cigar: string }
+ * Headers: Authorization: Bearer <token> (required when Supabase configured - premium tier only)
  * Proxies to OpenAI API for drink pairing suggestions.
- * Requires OPENAI_API_KEY in server .env.
  */
 router.post('/', async (req, res) => {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -13,6 +21,30 @@ router.post('/', async (req, res) => {
     return res.status(500).json({
       error: 'OpenAI API key not configured. Add OPENAI_API_KEY to server/.env',
     });
+  }
+
+  // When Supabase is configured, require premium tier
+  if (supabase) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ error: 'Sign in required' });
+    }
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (error || !user) {
+        return res.status(401).json({ error: 'Invalid or expired session' });
+      }
+      const { rows } = await pool.query(
+        'SELECT tier FROM user_profiles WHERE id = $1',
+        [user.id]
+      );
+      if (rows[0]?.tier !== 'premium') {
+        return res.status(403).json({ error: 'Premium subscription required for drink pairing' });
+      }
+    } catch (err) {
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
   }
 
   const cigar = (req.body?.cigar || '').trim();

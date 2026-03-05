@@ -4,9 +4,15 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { ActionButtons } from './components/ActionButtons';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AuthStack from './navigation/AuthStack';
 import { ClickOutsideProvider } from 'react-native-click-outside';
 import { initDatabase } from './db';
 import colors from './theme/colors';
+
+// Show auth flow (landing, login, signup) when Supabase URL is set.
+// Anon key also required for sign up/login to work.
+const showAuthFlow = !!process.env.EXPO_PUBLIC_SUPABASE_URL;
 
 function LoadingScreen() {
   return (
@@ -17,8 +23,9 @@ function LoadingScreen() {
   );
 }
 
-function App() {
+function AppContent() {
   const [isReady, setIsReady] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -34,27 +41,54 @@ function App() {
       .catch((err) => {
         clearTimeout(timeout);
         console.error('Failed to initialize database:', err);
-        setIsReady(true); // Still render so user sees the error
+        setIsReady(true);
       });
   }, []);
 
   if (!isReady) {
+    return <LoadingScreen />;
+  }
+
+  // No Supabase URL: skip auth, go straight to main app
+  if (!showAuthFlow) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="light" />
-        <LoadingScreen />
-      </GestureHandlerRootView>
+      <NavigationContainer>
+        <ActionButtons />
+      </NavigationContainer>
     );
   }
 
+  // Auth loading: show spinner
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
+
+  // Not logged in: show auth flow
+  if (!user) {
+    return (
+      <NavigationContainer>
+        <AuthStack onAuthenticated={() => {}} />
+      </NavigationContainer>
+    );
+  }
+
+  // Logged in: main app
+  return (
+    <NavigationContainer>
+      <ActionButtons />
+    </NavigationContainer>
+  );
+}
+
+function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
-      <ClickOutsideProvider>
-        <NavigationContainer>
-          <ActionButtons />
-        </NavigationContainer>
-      </ClickOutsideProvider>
+      <AuthProvider>
+        <ClickOutsideProvider>
+          <AppContent />
+        </ClickOutsideProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

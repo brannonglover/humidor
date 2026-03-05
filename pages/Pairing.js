@@ -11,16 +11,43 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
+import { createCheckoutSession } from '../api/subscription';
+import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
 function Pairing() {
+  const { tier, supabase, refreshTier } = useAuth();
   const [cigar, setCigar] = useState('');
   const [pairing, setPairing] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!supabase) {
+      Alert.alert('Not configured', 'Supabase auth is not set up.');
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      Alert.alert('Sign in required', 'Please sign in to subscribe.');
+      return;
+    }
+    setCheckoutLoading(true);
+    try {
+      const url = await createCheckoutSession(session.access_token);
+      if (url) await Linking.openURL(url);
+      refreshTier?.();
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not open checkout');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   const handleGetPairing = async () => {
     const trimmed = cigar.trim();
@@ -32,7 +59,8 @@ function Pairing() {
     setLoading(true);
     setPairing(null);
     try {
-      const result = await getDrinkPairing(trimmed);
+      const token = (await supabase?.auth.getSession()).data?.session?.access_token;
+      const result = await getDrinkPairing(trimmed, token);
       setPairing(result);
     } catch (err) {
       Alert.alert('Could not get pairing', err.message || 'Please try again. Make sure the server is running and OPENAI_API_KEY is set.');
@@ -40,6 +68,47 @@ function Pairing() {
       setLoading(false);
     }
   };
+
+  // Free tier: show upgrade prompt (when Supabase is configured)
+  const showUpgrade = tier === 'free' && supabase;
+  if (showUpgrade) {
+    return (
+      <View style={styles.screen}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Drink Pairing</Text>
+              <Text style={styles.subtitle}>Premium feature</Text>
+            </View>
+            <FeedbackBtn />
+          </View>
+          <View style={styles.content}>
+            <View style={styles.upgradeCard}>
+              <MaterialCommunityIcons name="glass-cocktail" size={48} color={colors.primary} style={styles.upgradeIcon} />
+              <Text style={styles.upgradeTitle}>Unlock Drink Pairing</Text>
+              <Text style={styles.upgradeText}>
+                Get AI-powered drink suggestions for every cigar. Subscribe to Premium for $4.99/mo.
+              </Text>
+            </View>
+            <Pressable
+              style={[styles.button, checkoutLoading && styles.buttonDisabled]}
+              onPress={handleSubscribe}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="crown" size={20} color="#fff" style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Subscribe for $4.99/mo</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -195,5 +264,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textPrimary,
     lineHeight: 24,
+  },
+  upgradeCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  upgradeIcon: {
+    marginBottom: 16,
+  },
+  upgradeTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  upgradeText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

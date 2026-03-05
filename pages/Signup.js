@@ -1,0 +1,160 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import colors from '../theme/colors';
+
+export default function Signup({ supabase, tier, onSuccess, onBack }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    const e = email.trim();
+    const p = password;
+    if (!e || !p) {
+      Alert.alert('Missing fields', 'Please enter email and password.');
+      return;
+    }
+    if (p.length < 6) {
+      Alert.alert('Password too short', 'Use at least 6 characters.');
+      return;
+    }
+    if (!supabase) {
+      Alert.alert('Supabase not configured', 'Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email: e, password: p });
+      if (error) throw error;
+      // Create user profile with tier on backend (handled by webhook or first tier fetch)
+      onSuccess?.();
+    } catch (err) {
+      Alert.alert('Sign up failed', err.message || 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={40}
+        >
+          <Pressable onPress={onBack} style={styles.backBtn} hitSlop={12}>
+            <Text style={styles.backText}>← Back</Text>
+          </Pressable>
+
+          <Text style={styles.title}>Create account</Text>
+          <Text style={styles.subtitle}>
+            {tier === 'premium' ? 'Subscribe for $4.99/mo after signup' : 'Free tier: up to 5 cigars'}
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={colors.placeholderText}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password (min 6 characters)"
+            placeholderTextColor={colors.placeholderText}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            editable={!loading}
+          />
+
+          <Pressable
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignup}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign up</Text>
+            )}
+          </Pressable>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.screenBg,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    padding: 24,
+  },
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 24,
+  },
+  backText: {
+    fontSize: 16,
+    color: colors.primary,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    marginBottom: 24,
+  },
+  input: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    marginBottom: 16,
+  },
+  button: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#fff',
+  },
+});

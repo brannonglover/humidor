@@ -19,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, COLLECTIONS } from '../db';
 import { fetchCatalog, addCigarToCatalog } from '../api/catalog';
 import { uploadCigarImage } from '../api/upload';
+import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
 import DatePickerField, { getTodayDateString } from '../components/DatePickerField';
@@ -40,9 +41,14 @@ function isValidSizeFormat(size) {
   return size?.trim() && SIZE_FORMAT.test(size.trim());
 }
 
+const FREE_CIGAR_LIMIT = 5;
+
 export default function AddCigar() {
   const navigation = useNavigation();
+  const { tier, supabase } = useAuth();
   const [showCustom, setShowCustom] = useState(false);
+  const [cigarCount, setCigarCount] = useState(0);
+  const enforceLimit = tier === 'free' && supabase;
 
   // Catalog selection state
   const [cigarBrand, setCigarBrand] = useState('');
@@ -85,7 +91,11 @@ export default function AddCigar() {
   useFocusEffect(
     React.useCallback(() => {
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-    }, [])
+      if (enforceLimit) {
+        db.getFirstAsync("SELECT COUNT(*) as n FROM cigars WHERE collection = 'humidor'")
+          .then((r) => setCigarCount(r?.n ?? 0));
+      }
+    }, [enforceLimit])
   );
 
   useEffect(() => {
@@ -199,6 +209,14 @@ export default function AddCigar() {
 
   async function addFromCatalog() {
     if (!cigarBrand?.trim() || !cigarName?.trim() || !cigarSize?.trim()) return;
+    if (enforceLimit && cigarCount >= FREE_CIGAR_LIMIT) {
+      Alert.alert(
+        'Limit reached',
+        `Free tier allows up to ${FREE_CIGAR_LIMIT} cigars. Subscribe to Premium for unlimited.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     const qty = Math.max(1, parseInt(cigarQuantity, 10) || 1);
     const dateToUse = dateAdded?.trim() || new Date().toISOString().slice(0, 10);
     try {
@@ -233,6 +251,14 @@ export default function AddCigar() {
 
   async function addCustom() {
     if (!customBrand?.trim() || !customName?.trim() || !customSize?.trim()) return;
+    if (enforceLimit && cigarCount >= FREE_CIGAR_LIMIT) {
+      Alert.alert(
+        'Limit reached',
+        `Free tier allows up to ${FREE_CIGAR_LIMIT} cigars. Subscribe to Premium for unlimited.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     if (!isValidSizeFormat(customSize)) {
       Alert.alert(
         'Invalid size format',
@@ -296,7 +322,9 @@ export default function AddCigar() {
           <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
             <Text style={styles.backText}>← Cancel</Text>
           </Pressable>
-          <Text style={styles.title}>Add Cigar</Text>
+          <Text style={styles.title}>
+            Add Cigar{enforceLimit ? ` (${cigarCount}/${FREE_CIGAR_LIMIT})` : ''}
+          </Text>
           <View style={styles.backBtn} />
         </View>
 

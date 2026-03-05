@@ -1,9 +1,13 @@
 import { API_BASE_URL } from './config';
 
-export async function getDrinkPairing(cigar) {
+export async function getDrinkPairing(cigar, accessToken) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
   const res = await fetch(`${API_BASE_URL}/api/pairing`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ cigar: (cigar || '').trim() }),
   });
 
