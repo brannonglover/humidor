@@ -27,7 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.brannonglover.humidor</string>
+          <string>com.glovermedia.humidor</string>
         </array>
       </dict>
       <dict>

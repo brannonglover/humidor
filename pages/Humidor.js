@@ -7,7 +7,7 @@ import colors from '../theme/colors';
 
 function Humidor({ navigation }) {
   const view = 'humidor';
-  const { user, supabase } = useAuth();
+  const { user, supabase, actualTier, previewFreeTier, setPreviewFreeTier } = useAuth();
 
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure?', [
@@ -27,6 +27,16 @@ function Humidor({ navigation }) {
             </View>
             <View style={styles.headerRight}>
               <FeedbackBtn />
+              {user && actualTier === 'premium' && (
+                <Pressable
+                  onPress={() => setPreviewFreeTier((p) => !p)}
+                  style={[styles.signOutBtn, previewFreeTier && styles.previewActive]}
+                >
+                  <Text style={[styles.signOutText, previewFreeTier && styles.previewActiveText]}>
+                    {previewFreeTier ? 'Previewing free' : 'Preview free'}
+                  </Text>
+                </Pressable>
+              )}
               {user && (
                 <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
                   <Text style={styles.signOutText}>Sign out</Text>
@@ -84,5 +94,15 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  previewActive: {
+    backgroundColor: colors.primary + '20',
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  previewActiveText: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

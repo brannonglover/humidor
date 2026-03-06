@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [tier, setTier] = useState('free'); // 'free' | 'premium'
   const [loading, setLoading] = useState(true);
+  const [previewFreeTier, setPreviewFreeTier] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -58,11 +59,16 @@ export function AuthProvider({ children }) {
     return data.tier === 'premium' ? 'premium' : 'free';
   }
 
+  const effectiveTier = previewFreeTier ? 'free' : tier;
+
   const value = {
     user,
-    tier,
+    tier: effectiveTier,
+    actualTier: tier,
     loading,
     supabase,
+    previewFreeTier,
+    setPreviewFreeTier,
     refreshTier: () => user && supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) fetchTier(session.access_token).then(setTier);
     }),

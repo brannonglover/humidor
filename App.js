@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -80,11 +80,29 @@ function AppContent() {
   );
 }
 
+function SubscriptionDeepLinkHandler() {
+  const { refreshTier } = useAuth();
+  useEffect(() => {
+    const handleUrl = ({ url }) => {
+      if (url?.includes('subscribe-success')) {
+        refreshTier?.();
+      }
+    };
+    const sub = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((url) => {
+      if (url?.includes('subscribe-success')) refreshTier?.();
+    });
+    return () => sub.remove();
+  }, [refreshTier]);
+  return null;
+}
+
 function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
       <AuthProvider>
+        <SubscriptionDeepLinkHandler />
         <ClickOutsideProvider>
           <AppContent />
         </ClickOutsideProvider>

@@ -6,19 +6,20 @@ import {
   ScrollView,
   Pressable,
   SafeAreaView,
-  Image,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
 
 const FREE_FEATURES = [
   'Up to 5 cigars',
-  'Favorites & tasting notes',
-  'Strength tracking',
+  'Up to 5 favorites',
+  'Basic tasting notes',
 ];
 const PREMIUM_FEATURES = [
   'Unlimited cigars',
-  'Favorites & tasting notes',
+  'Unlimited favorites',
+  'Strength profile',
+  'Photos',
   'AI drink pairings',
 ];
 
@@ -32,11 +33,6 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <Image
-              source={require('../assets/splash-icon.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
             <Text style={styles.logo}>Humidor</Text>
             <Text style={styles.tagline}>Your personal cigar companion</Text>
           </View>
@@ -44,9 +40,13 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
           <View style={styles.whySection}>
             <Text style={styles.sectionTitle}>Why Humidor?</Text>
             <Text style={styles.sectionText}>
-              Track your collection, log tasting notes, and discover drink pairings. Built for cigar enthusiasts who want to get the most from every smoke.
+              Track your collection, log tasting notes, and discover drink pairings. Access a growing, community-built cigar database that expands with every contribution. Built for cigar enthusiasts who want to get the most from every smoke.
             </Text>
             <View style={styles.benefits}>
+              <View style={styles.benefitRow}>
+                <MaterialCommunityIcons name="check-circle" size={20} color={colors.like} />
+                <Text style={styles.benefitText}>Growing, community-built cigar database</Text>
+              </View>
               <View style={styles.benefitRow}>
                 <MaterialCommunityIcons name="check-circle" size={20} color={colors.like} />
                 <Text style={styles.benefitText}>Catalog your collection</Text>
@@ -127,11 +127,6 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     marginBottom: 28,
-  },
-  logoImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 12,
   },
   logo: {
     fontSize: 32,

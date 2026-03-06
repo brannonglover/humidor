@@ -12,10 +12,13 @@ import {
   Image,
   Alert,
   ActionSheetIOS,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db } from '../db';
+import { useAuth } from '../context/AuthContext';
+import { createCheckoutSession } from '../api/subscription';
 import { uploadCigarImage } from '../api/upload';
 import colors from '../theme/colors';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
@@ -31,6 +34,7 @@ export default function EditCigar() {
   const navigation = useNavigation();
   const route = useRoute();
   const cigar = route.params?.cigar;
+  const { tier, supabase } = useAuth();
 
   const [brand, setBrand] = useState(cigar?.brand ?? '');
   const [name, setName] = useState(cigar?.name ?? '');
@@ -54,6 +58,29 @@ export default function EditCigar() {
   );
 
   async function handleAddImage() {
+    if (tier === 'free' && supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.access_token) {
+          Alert.alert('Sign in required', 'Please sign in to subscribe to Premium.');
+          return;
+        }
+        Alert.alert('Upgrade to Premium', 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Subscribe',
+            onPress: async () => {
+              try {
+                const url = await createCheckoutSession(session.access_token);
+                if (url) await Linking.openURL(url);
+              } catch (e) {
+                Alert.alert('Error', e.message || 'Could not open checkout');
+              }
+            },
+          },
+        ]);
+      });
+      return;
+    }
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {

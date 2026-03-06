@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, Text, View, FlatList, Pressable, Image, Animated } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Pressable, Image, Animated, Alert, Linking } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import SmokedOneModal from './SmokedOneModal';
 import StrengthProfileModal from './StrengthProfileModal';
 import StrengthIndicator, { getOverallStrength } from './StrengthIndicator';
 import { parseStrengthProfile } from './StrengthProfileModal';
+import { useAuth } from '../context/AuthContext';
+import { createCheckoutSession } from '../api/subscription';
 
 function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProfile }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -301,7 +303,10 @@ function formatAgingDuration(dateAddedStr) {
 
 const LONG_PRESS_MS = 500;
 
+const FREE_FAVORITES_LIMIT = 5;
+
 export default function CigarList({ view, onEditCigar }) {
+  const { tier, supabase, refreshTier } = useAuth();
   const [show, setShow] = useState(false);
   const [cigarNum, setCigarNum] = useState(0);
   const [viewList, setViewList] = useState([]);
@@ -316,6 +321,31 @@ export default function CigarList({ view, onEditCigar }) {
 
   const isFavoritesWithStacks = view === COLLECTIONS.LIKES;
   const displayData = isFavoritesWithStacks ? groupByBrand(viewList) : viewList;
+
+  const showUpgradePrompt = (message = 'Subscribe to Premium for $4.99/mo to unlock this feature.') => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.access_token) {
+        Alert.alert('Sign in required', 'Please sign in to subscribe to Premium.');
+        return;
+      }
+      Alert.alert('Upgrade to Premium', message, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Subscribe',
+          onPress: async () => {
+            try {
+              const url = await createCheckoutSession(session.access_token);
+              if (url) await Linking.openURL(url);
+              refreshTier?.();
+            } catch (e) {
+              Alert.alert('Error', e.message || 'Could not open checkout');
+            }
+          },
+        },
+      ]);
+    });
+  };
 
   const toggleDetails = (num) => {
     if (show) {
@@ -359,13 +389,21 @@ export default function CigarList({ view, onEditCigar }) {
     }
   };
 
-  const toggleFavorite = (cigar, isFavorite) => {
+  const toggleFavorite = async (cigar, isFavorite) => {
     if (isFavorite) {
       db.runAsync(
         'UPDATE cigars SET is_favorite = 0, favorite_notes = NULL, flavor_profile = NULL, construction_quality = NULL, smoked_date = NULL, flavor_changes = NULL WHERE id = ?',
         cigar.id
       ).then(refreshList).catch((e) => console.log(e));
     } else {
+      if (tier === 'free' && supabase) {
+        const rows = await db.getAllAsync('SELECT COUNT(*) as n FROM cigars WHERE is_favorite = 1');
+        const count = rows?.[0]?.n ?? 0;
+        if (count >= FREE_FAVORITES_LIMIT) {
+          showUpgradePrompt(`Free tier allows up to ${FREE_FAVORITES_LIMIT} favorites. Subscribe to Premium for unlimited.`);
+          return;
+        }
+      }
       setFavoriteModalMode('add');
       setFavoriteModalCigar(cigar);
     }
@@ -605,15 +643,29 @@ export default function CigarList({ view, onEditCigar }) {
             <ExpandableFavoriteNotes
               isExpanded={expandedNotes === cigar.id}
               cigar={cigar}
-              onEdit={view === 'likes' || view === 'dislikes' ? undefined : () => {
+              onEdit={view === 'likes' || view === 'dislikes' ? undefined : async () => {
                 if (cigar.is_favorite ?? 0) {
                   openEditNotes(cigar);
                 } else {
+                  if (tier === 'free' && supabase) {
+                    const rows = await db.getAllAsync('SELECT COUNT(*) as n FROM cigars WHERE is_favorite = 1');
+                    const count = rows?.[0]?.n ?? 0;
+                    if (count >= FREE_FAVORITES_LIMIT) {
+                      showUpgradePrompt(`Free tier allows up to ${FREE_FAVORITES_LIMIT} favorites. Subscribe to Premium for unlimited.`);
+                      return;
+                    }
+                  }
                   setFavoriteModalMode('add');
                   setFavoriteModalCigar(cigar);
                 }
               }}
-              onOpenStrengthProfile={(c) => setStrengthProfileModalCigar(c)}
+              onOpenStrengthProfile={(c) => {
+                if (tier === 'free' && supabase) {
+                  showUpgradePrompt('Strength profile is a Premium feature. Subscribe to add strength and flavor notes for each third.');
+                } else {
+                  setStrengthProfileModalCigar(c);
+                }
+              }}
             />
           )}
           {(view === 'humidor' || view === 'likes') && (
@@ -645,7 +697,11 @@ export default function CigarList({ view, onEditCigar }) {
                   strength={getOverallStrength(cigar.strength_profile)}
                   onPress={(e) => {
                     e.stopPropagation();
-                    setStrengthProfileModalCigar(cigar);
+                    if (tier === 'free' && supabase) {
+                      showUpgradePrompt('Strength profile is a Premium feature. Subscribe to add strength and flavor notes for each third.');
+                    } else {
+                      setStrengthProfileModalCigar(cigar);
+                    }
                   }}
                 />
               </View>
@@ -729,7 +785,11 @@ export default function CigarList({ view, onEditCigar }) {
                   strength={getOverallStrength(cigar.strength_profile)}
                   onPress={(e) => {
                     e.stopPropagation();
-                    setStrengthProfileModalCigar(cigar);
+                    if (tier === 'free' && supabase) {
+                      showUpgradePrompt('Strength profile is a Premium feature. Subscribe to add strength and flavor notes for each third.');
+                    } else {
+                      setStrengthProfileModalCigar(cigar);
+                    }
                   }}
                 />
               </View>

@@ -1,4 +1,4 @@
-package com.brannonglover.humidor
+package com.glovermedia.humidor
 
 import android.os.Build
 import android.os.Bundle
