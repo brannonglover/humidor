@@ -33,12 +33,12 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <Text style={styles.logo}>Humidor</Text>
+            <Text style={styles.logo}>Cavaro</Text>
             <Text style={styles.tagline}>Your personal cigar companion</Text>
           </View>
 
           <View style={styles.whySection}>
-            <Text style={styles.sectionTitle}>Why Humidor?</Text>
+            <Text style={styles.sectionTitle}>Why Cavaro?</Text>
             <Text style={styles.sectionText}>
               Track your collection, log tasting notes, and discover drink pairings. Access a growing, community-built cigar database that expands with every contribution. Built for cigar enthusiasts who want to get the most from every smoke.
             </Text>

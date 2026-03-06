@@ -312,7 +312,7 @@ export default function AddCigar() {
         length: customSize.trim(),
         image: imageUrl,
       });
-      // Add to user's local humidor
+      // Add to user's local Cavaro
       const qty = Math.max(1, parseInt(customQuantity, 10) || 1);
       const dateToUse = dateAdded?.trim() || new Date().toISOString().slice(0, 10);
       await db.runAsync(
@@ -454,7 +454,7 @@ export default function AddCigar() {
               </View>
 
               <DatePickerField
-                label="Date added to humidor"
+                label="Date added to Cavaro"
                 value={dateAdded}
                 onChange={setDateAdded}
                 placeholder="Today"
@@ -502,7 +502,7 @@ export default function AddCigar() {
                 onPress={addFromCatalog}
                 disabled={!isCatalogValid}
               >
-                <Text style={[styles.primaryBtnText, !isCatalogValid && styles.primaryBtnTextDisabled]}>Add to Humidor</Text>
+                <Text style={[styles.primaryBtnText, !isCatalogValid && styles.primaryBtnTextDisabled]}>Add to Cavaro</Text>
               </Pressable>
 
               <Pressable style={styles.switchLink} onPress={() => setShowCustom(true)}>
@@ -513,7 +513,7 @@ export default function AddCigar() {
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Add custom cigar</Text>
-                <Text style={styles.sectionSubtitle}>Add a new cigar to the catalog and your humidor</Text>
+                <Text style={styles.sectionSubtitle}>Add a new cigar to the catalog and your Cavaro</Text>
               </View>
 
               <View style={styles.field}>
@@ -567,7 +567,7 @@ export default function AddCigar() {
               </View>
 
               <DatePickerField
-                label="Date added to humidor"
+                label="Date added to Cavaro"
                 value={dateAdded}
                 onChange={setDateAdded}
                 placeholder="Today"
@@ -641,7 +641,7 @@ export default function AddCigar() {
                 onPress={addCustom}
                 disabled={!isCustomValid}
               >
-                <Text style={[styles.primaryBtnText, !isCustomValid && styles.primaryBtnTextDisabled]}>Add to Catalog & Humidor</Text>
+                <Text style={[styles.primaryBtnText, !isCustomValid && styles.primaryBtnTextDisabled]}>Add to Catalog & Cavaro</Text>
               </Pressable>
 
               <Pressable style={styles.switchLink} onPress={() => setShowCustom(false)}>

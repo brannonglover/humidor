@@ -33,13 +33,13 @@ router.post('/', async (req, res) => {
     }
 
     const typeLabel = type || 'General';
-    const subject = `[Humidor Feedback] ${typeLabel}: ${message.slice(0, 50)}${message.length > 50 ? '...' : ''}`;
+    const subject = `[Cavaro Feedback] ${typeLabel}: ${message.slice(0, 50)}${message.length > 50 ? '...' : ''}`;
     const html = `
       <p><strong>Type:</strong> ${typeLabel}</p>
       <p><strong>Message:</strong></p>
       <p>${message.trim().replace(/\n/g, '<br>')}</p>
       <hr>
-      <p style="color:#888;font-size:12px;">Sent from Humidor app</p>
+      <p style="color:#888;font-size:12px;">Sent from Cavaro app</p>
     `;
 
     await transporter.sendMail({

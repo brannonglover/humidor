@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import colors from '../theme/colors';
 
-const TAB_ORDER = ['Humidor', 'Favorites', 'Dislikes', 'Pairing'];
+const TAB_ORDER = ['Cavaro', 'Favorites', 'Dislikes', 'Pairing'];
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 400;
 const SLIDE_DISTANCE = 24;

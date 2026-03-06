@@ -1,4 +1,4 @@
-package com.glovermedia.humidor
+package com.brannonglover.humidor
 
 import android.app.Application
 import android.content.res.Configuration

@@ -70,7 +70,7 @@ export function ActionButtons() {
       }}
     >
       <Tab.Screen
-        name="Humidor"
+        name="Cavaro"
         component={SwipeableHumidor}
         options={{
           tabBarIcon: ({ focused }) => (

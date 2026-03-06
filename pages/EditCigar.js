@@ -263,7 +263,7 @@ export default function EditCigar() {
           </View>
 
           <DatePickerField
-            label="Date added to humidor (optional)"
+            label="Date added to Cavaro (optional)"
             value={dateAdded}
             onChange={setDateAdded}
             placeholder="Tap to pick date"

@@ -22,7 +22,7 @@ function Humidor({ navigation }) {
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Humidor</Text>
+              <Text style={styles.title}>Cavaro</Text>
               <Text style={styles.subtitle}>Your collection</Text>
             </View>
             <View style={styles.headerRight}>

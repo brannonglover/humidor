@@ -1,8 +1,8 @@
 {
   "expo": {
-    "scheme": "humidor",
-    "name": "humidor",
-    "slug": "humidor",
+    "scheme": "cavaro",
+    "name": "Cavaro",
+    "slug": "cavaro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.glovermedia.humidor"
+      "bundleIdentifier": "com.brannonglover.humidor"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +26,7 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.glovermedia.humidor"
+      "package": "com.brannonglover.humidor"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,8 +36,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Humidor to access your photos to add cigar images.",
-          "cameraPermission": "Allow Humidor to use your camera to take photos of cigars."
+          "photosPermission": "Allow Cavaro to access your photos to add cigar images.",
+          "cameraPermission": "Allow Cavaro to use your camera to take photos of cigars."
         }
       ]
     ],

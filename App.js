@@ -17,7 +17,7 @@ const showAuthFlow = !!process.env.EXPO_PUBLIC_SUPABASE_URL;
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
-      <Text style={styles.loadingTitle}>Humidor</Text>
+      <Text style={styles.loadingTitle}>Cavaro</Text>
       <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
     </View>
   );

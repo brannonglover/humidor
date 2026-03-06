@@ -1,5 +1,5 @@
 /**
- * Centralized database module for Humidor app.
+ * Centralized database module for Cavaro app.
  * Uses a single `cigars` table with a `collection` column instead of
  * three separate tables (humidor, likes, dislikes).
  * cigar_catalog: local cache/fallback when API is unavailable (see api/catalog.js).

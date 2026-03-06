@@ -1,5 +1,5 @@
 /**
- * API base URL for the Humidor backend.
+ * API base URL for the Cavaro backend.
  * - iOS Simulator: localhost works (simulator shares host network)
  * - Android Emulator: use 10.0.2.2 for localhost
  * - Physical device: use your machine's LAN IP (e.g. 192.168.1.x)

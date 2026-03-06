@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.glovermedia.humidor'
+    namespace 'com.brannonglover.humidor'
     defaultConfig {
-        applicationId 'com.glovermedia.humidor'
+        applicationId 'com.brannonglover.humidor'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
