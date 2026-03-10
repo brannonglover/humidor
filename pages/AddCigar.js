@@ -23,6 +23,7 @@ import { uploadCigarImage } from '../api/upload';
 import { useAuth } from '../context/AuthContext';
 import { createCheckoutSession } from '../api/subscription';
 import colors from '../theme/colors';
+import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
 import DatePickerField, { getTodayDateString } from '../components/DatePickerField';
 
@@ -450,6 +451,7 @@ export default function AddCigar() {
                   placeholder="1"
                   placeholderTextColor={colors.placeholderText}
                   keyboardType="number-pad"
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                 />
               </View>
 
@@ -525,6 +527,8 @@ export default function AddCigar() {
                   placeholder="e.g. Alec Bradley"
                   placeholderTextColor={colors.placeholderText}
                   autoCapitalize="words"
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
                 />
               </View>
 
@@ -537,6 +541,8 @@ export default function AddCigar() {
                   placeholder="e.g. Prensado"
                   placeholderTextColor={colors.placeholderText}
                   autoCapitalize="words"
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
                 />
               </View>
 
@@ -548,6 +554,8 @@ export default function AddCigar() {
                   onChangeText={setCustomSize}
                   placeholder="e.g. 6x52 or 7.5x50"
                   placeholderTextColor={colors.placeholderText}
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
                 />
                 {customSize && !isValidSizeFormat(customSize) && (
                   <Text style={styles.errorText}>Size must be #x## or #.#x## (e.g. 6x52, 7.5x50)</Text>
@@ -563,6 +571,7 @@ export default function AddCigar() {
                   placeholder="1"
                   placeholderTextColor={colors.placeholderText}
                   keyboardType="number-pad"
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                 />
               </View>
 
@@ -584,6 +593,9 @@ export default function AddCigar() {
                   placeholderTextColor={colors.placeholderText}
                   multiline
                   numberOfLines={3}
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
+                  blurOnSubmit={true}
                 />
               </View>
 
@@ -595,6 +607,8 @@ export default function AddCigar() {
                   onChangeText={setCustomWrapper}
                   placeholder="e.g. Honduras"
                   placeholderTextColor={colors.placeholderText}
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
                 />
               </View>
 
@@ -606,6 +620,8 @@ export default function AddCigar() {
                   onChangeText={setCustomBinder}
                   placeholder="e.g. Nicaragua"
                   placeholderTextColor={colors.placeholderText}
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
                 />
               </View>
 
@@ -617,6 +633,8 @@ export default function AddCigar() {
                   onChangeText={setCustomFiller}
                   placeholder="e.g. Honduras, Nicaragua"
                   placeholderTextColor={colors.placeholderText}
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                  returnKeyType="done"
                 />
               </View>
 

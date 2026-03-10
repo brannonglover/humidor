@@ -25,6 +25,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="cavaro"/>
         <data android:scheme="com.brannonglover.humidor"/>
         <data android:scheme="exp+cavaro"/>
       </intent-filter>

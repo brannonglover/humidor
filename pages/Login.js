@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import colors from '../theme/colors';
+import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 
 export default function Login({ supabase, onSuccess, onBack }) {
   const [email, setEmail] = useState('');
@@ -66,6 +67,8 @@ export default function Login({ supabase, onSuccess, onBack }) {
             autoCapitalize="none"
             autoCorrect={false}
             editable={!loading}
+            inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+            returnKeyType="done"
           />
           <TextInput
             style={styles.input}
@@ -75,6 +78,8 @@ export default function Login({ supabase, onSuccess, onBack }) {
             onChangeText={setPassword}
             secureTextEntry
             editable={!loading}
+            inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+            returnKeyType="done"
           />
 
           <Pressable

@@ -1,5 +1,7 @@
-import { View, StyleSheet, Text, SafeAreaView, Pressable, Alert } from 'react-native';
+import { View, StyleSheet, Text, SafeAreaView, Pressable, Image } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AddCigarBtn from '../components/AddCigarBtn';
+import AccountMenu from '../components/AccountMenu';
 import CigarList from '../components/CigarList';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { useAuth } from '../context/AuthContext';
@@ -9,20 +11,13 @@ function Humidor({ navigation }) {
   const view = 'humidor';
   const { user, supabase, actualTier, previewFreeTier, setPreviewFreeTier } = useAuth();
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => supabase?.auth.signOut() },
-    ]);
-  };
-
   return (
     <>
       <View style={styles.screen}>
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Cavaro</Text>
+            <View style={styles.headerLeft}>
+              <Image source={require('../assets/logo-wo.png')} style={styles.logo} resizeMode="contain" />
               <Text style={styles.subtitle}>Your collection</Text>
             </View>
             <View style={styles.headerRight}>
@@ -38,9 +33,13 @@ function Humidor({ navigation }) {
                 </Pressable>
               )}
               {user && (
-                <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
-                  <Text style={styles.signOutText}>Sign out</Text>
-                </Pressable>
+                <AccountMenu onSignOut={() => supabase?.auth.signOut()}>
+                  <MaterialCommunityIcons
+                    name="dots-vertical"
+                    size={24}
+                    color={colors.textSecondary}
+                  />
+                </AccountMenu>
               )}
             </View>
           </View>
@@ -65,17 +64,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingVertical: 20,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    letterSpacing: 0.5,
+  headerLeft: {
+    alignItems: 'flex-start',
+  },
+  logo: {
+    height: 40,
+    width: 74,
   },
   subtitle: {
     fontSize: 15,
@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    marginLeft: 'auto',
   },
   signOutBtn: {
     paddingVertical: 4,

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
+import { KEYBOARD_ACCESSORY_ID } from './KeyboardAccessory';
 
 const STRENGTH_LABELS = ['Mild', 'Mild-Med', 'Medium', 'Med-Full', 'Full'];
 const THIRD_LABELS = ['First Third', 'Second Third', 'Final Third'];
@@ -184,6 +185,7 @@ export default function StrengthProfileModal({
                     onChangeText={setCustomFlavor}
                     onSubmitEditing={() => addCustomFlavor(i)}
                     returnKeyType="done"
+                    inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                   />
                   <Pressable
                     onPress={() => addCustomFlavor(i)}

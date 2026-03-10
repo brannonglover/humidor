@@ -15,6 +15,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sendFeedback } from '../api/feedback';
 import colors from '../theme/colors';
+import { KEYBOARD_ACCESSORY_ID } from './KeyboardAccessory';
 
 const FEEDBACK_TYPES = [
   { label: 'General thought', value: 'General' },
@@ -102,6 +103,9 @@ export default function FeedbackModal({ visible, onClose }) {
               multiline
               numberOfLines={4}
               editable={!sending}
+              inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+              returnKeyType="done"
+              blurOnSubmit={true}
             />
           </ScrollView>
 

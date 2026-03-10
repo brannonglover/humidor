@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
@@ -33,7 +34,7 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <Text style={styles.logo}>Cavaro</Text>
+            <Image source={require('../assets/logo-wd.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.tagline}>Your personal cigar companion</Text>
           </View>
 
@@ -129,10 +130,8 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   logo: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: colors.primary,
-    letterSpacing: 3,
+    height: 72,
+    width: 270,
   },
   tagline: {
     fontSize: 15,

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, Linking } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, ActivityIndicator, Image, StyleSheet, Linking } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { ActionButtons } from './components/ActionButtons';
+import KeyboardAccessory from './components/KeyboardAccessory';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthStack from './navigation/AuthStack';
 import { ClickOutsideProvider } from 'react-native-click-outside';
@@ -17,7 +18,7 @@ const showAuthFlow = !!process.env.EXPO_PUBLIC_SUPABASE_URL;
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
-      <Text style={styles.loadingTitle}>Cavaro</Text>
+      <Image source={require('./assets/logo-wd.png')} style={styles.loadingLogo} resizeMode="contain" />
       <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
     </View>
   );
@@ -81,19 +82,59 @@ function AppContent() {
 }
 
 function SubscriptionDeepLinkHandler() {
-  const { refreshTier } = useAuth();
+  const { refreshTier, user, supabase } = useAuth();
+  const pendingSessionId = useRef(null);
+
   useEffect(() => {
-    const handleUrl = ({ url }) => {
-      if (url?.includes('subscribe-success')) {
+    const processReturnFromCheckout = async (sessionId, accessToken) => {
+      if (!sessionId || !accessToken) return;
+      try {
+        const { confirmCheckoutSession } = await import('./api/subscription');
+        await confirmCheckoutSession(accessToken, sessionId);
+      } finally {
         refreshTier?.();
       }
     };
+
+    const handleReturnFromCheckout = async (url) => {
+      if (!url?.includes('subscribe-success')) return;
+      const sessionId = url.match(/session_id=([^&]+)/)?.[1];
+      if (!sessionId) {
+        refreshTier?.();
+        return;
+      }
+      if (user && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await processReturnFromCheckout(sessionId, session.access_token);
+        } else {
+          pendingSessionId.current = sessionId;
+        }
+      } else {
+        pendingSessionId.current = sessionId;
+      }
+    };
+
+    const handleUrl = ({ url }) => handleReturnFromCheckout(url);
     const sub = Linking.addEventListener('url', handleUrl);
-    Linking.getInitialURL().then((url) => {
-      if (url?.includes('subscribe-success')) refreshTier?.();
-    });
+    Linking.getInitialURL().then(handleReturnFromCheckout);
     return () => sub.remove();
-  }, [refreshTier]);
+  }, [refreshTier, user, supabase]);
+
+  // Process pending session when user becomes available (e.g. cold start from deep link)
+  useEffect(() => {
+    const sid = pendingSessionId.current;
+    if (!sid || !user || !supabase) return;
+    pendingSessionId.current = null;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) {
+        import('./api/subscription').then(({ confirmCheckoutSession }) =>
+          confirmCheckoutSession(session.access_token, sid).finally(() => refreshTier?.())
+        );
+      }
+    });
+  }, [user, supabase, refreshTier]);
+
   return null;
 }
 
@@ -101,6 +142,7 @@ function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
+      <KeyboardAccessory />
       <AuthProvider>
         <SubscriptionDeepLinkHandler />
         <ClickOutsideProvider>
@@ -118,11 +160,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.screenBg,
   },
-  loadingTitle: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: colors.primary,
-    letterSpacing: 2,
+  loadingLogo: {
+    height: 48,
+    width: 180,
     marginBottom: 24,
   },
   spinner: {

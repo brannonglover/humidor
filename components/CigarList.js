@@ -865,12 +865,26 @@ export default function CigarList({ view, onEditCigar }) {
     return renderCigarCard(cigar, 0, cigar.id);
   };
 
+  const renderEmptyComponent = () => {
+    if (view === COLLECTIONS.HUMIDOR) {
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>
+            A humidor without cigars is just a fancy box. Time to fill it up.
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       {view !== '' && (
         <FlatList
           ref={flatListRef}
           style={styles.listItems}
+          contentContainerStyle={displayData.length === 0 ? styles.emptyListContent : undefined}
           data={displayData}
           keyExtractor={(item) =>
             isFavoritesWithStacks ? item.brand : String(item?.id ?? '')
@@ -880,6 +894,7 @@ export default function CigarList({ view, onEditCigar }) {
               {renderItem(item)}
             </View>
           )}
+          ListEmptyComponent={renderEmptyComponent}
         />
       )}
       <ImageViewerModal
@@ -957,6 +972,22 @@ const styles = StyleSheet.create({
   listItems: {
     flex: 1,
     paddingTop: 16,
+  },
+  emptyListContent: {
+    flexGrow: 1,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    minHeight: 200,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   cigarHeader: {
     flexDirection: 'row',

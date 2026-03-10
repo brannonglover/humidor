@@ -19,6 +19,7 @@ import { getDrinkPairing } from '../api/pairing';
 import { createCheckoutSession } from '../api/subscription';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
+import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 
 function Pairing() {
   const { tier, supabase, refreshTier } = useAuth();
@@ -135,6 +136,8 @@ function Pairing() {
             onChangeText={setCigar}
             editable={!loading}
             autoCapitalize="words"
+            inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+            returnKeyType="done"
           />
 
           <Pressable

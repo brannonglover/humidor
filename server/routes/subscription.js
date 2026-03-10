@@ -53,11 +53,14 @@ router.post('/create-checkout', async (req, res) => {
     }
 
     const baseUrl = (req.protocol || 'http') + '://' + (req.get('host') || 'localhost:5001');
+    const rawSuccessUrl = req.body?.successUrl || `${baseUrl}/success`;
+    const successUrl = rawSuccessUrl + (rawSuccessUrl.includes('?') ? '&' : '?') + 'session_id={CHECKOUT_SESSION_ID}';
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: stripePriceId, quantity: 1 }],
-      success_url: req.body?.successUrl || `${baseUrl}/success`,
+      success_url: successUrl,
       cancel_url: req.body?.cancelUrl || `${baseUrl}/cancel`,
       metadata: { supabase_user_id: user.id },
       subscription_data: { metadata: { supabase_user_id: user.id } },
@@ -67,6 +70,55 @@ router.post('/create-checkout', async (req, res) => {
   } catch (err) {
     console.error('Checkout error:', err);
     return res.status(500).json({ error: err.message || 'Failed to create checkout' });
+  }
+});
+
+/**
+ * POST /api/subscription/confirm-session
+ * Body: { session_id: string }
+ * Headers: Authorization: Bearer <supabase_access_token>
+ * Called when user returns from Stripe Checkout success URL.
+ * Verifies payment and updates tier immediately (avoids webhook timing race).
+ */
+router.post('/confirm-session', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const sessionId = req.body?.session_id;
+
+  if (!token || !supabase || !stripe || !sessionId) {
+    return res.status(400).json({ error: 'Missing session_id or auth' });
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
+
+    if (checkoutSession.metadata?.supabase_user_id !== user.id) {
+      return res.status(403).json({ error: 'Session does not belong to this user' });
+    }
+
+    if (checkoutSession.payment_status === 'paid' && checkoutSession.mode === 'subscription') {
+      const sub = checkoutSession.subscription;
+      const status = typeof sub === 'object' ? sub?.status : null;
+      if (status === 'active' || status === 'trialing') {
+        await pool.query(
+          "UPDATE user_profiles SET tier = 'premium', updated_at = NOW() WHERE id = $1",
+          [user.id]
+        );
+        return res.json({ tier: 'premium' });
+      }
+    }
+
+    return res.json({ tier: 'free' });
+  } catch (err) {
+    console.error('Confirm session error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to confirm session' });
   }
 });
 

@@ -14,6 +14,7 @@ import {
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import DatePickerField from './DatePickerField';
 import colors from '../theme/colors';
+import { KEYBOARD_ACCESSORY_ID } from './KeyboardAccessory';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -135,6 +136,9 @@ export default function FavoriteNotesModal({
                 onChangeText={setWhyLiked}
                 multiline
                 numberOfLines={3}
+                inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                returnKeyType="done"
+                blurOnSubmit={true}
               />
 
               <Text style={styles.label}>Construction quality</Text>
@@ -146,6 +150,9 @@ export default function FavoriteNotesModal({
                 onChangeText={setConstructionQuality}
                 multiline
                 numberOfLines={2}
+                inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
+                returnKeyType="done"
+                blurOnSubmit={true}
               />
 
               <DatePickerField
