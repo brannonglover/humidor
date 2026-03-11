@@ -81,16 +81,23 @@ function AppContent() {
   );
 }
 
+const PENDING_SESSION_MAX_RETRIES = 10;
+
 function SubscriptionDeepLinkHandler() {
-  const { refreshTier, user, supabase } = useAuth();
+  const { refreshTier, setTierFromSubscription, user, supabase } = useAuth();
   const pendingSessionId = useRef(null);
+  const [pendingTrigger, setPendingTrigger] = useState(0);
+  const retryCount = useRef(0);
 
   useEffect(() => {
     const processReturnFromCheckout = async (sessionId, accessToken) => {
       if (!sessionId || !accessToken) return;
       try {
         const { confirmCheckoutSession } = await import('./api/subscription');
-        await confirmCheckoutSession(accessToken, sessionId);
+        const tier = await confirmCheckoutSession(accessToken, sessionId);
+        if (tier === 'premium') {
+          setTierFromSubscription?.('premium');
+        }
       } finally {
         refreshTier?.();
       }
@@ -98,7 +105,8 @@ function SubscriptionDeepLinkHandler() {
 
     const handleReturnFromCheckout = async (url) => {
       if (!url?.includes('subscribe-success')) return;
-      const sessionId = url.match(/session_id=([^&]+)/)?.[1];
+      const encoded = url.match(/session_id=([^&]+)/)?.[1];
+      const sessionId = encoded ? decodeURIComponent(encoded) : null;
       if (!sessionId) {
         refreshTier?.();
         return;
@@ -109,9 +117,11 @@ function SubscriptionDeepLinkHandler() {
           await processReturnFromCheckout(sessionId, session.access_token);
         } else {
           pendingSessionId.current = sessionId;
+          setPendingTrigger((t) => t + 1);
         }
       } else {
         pendingSessionId.current = sessionId;
+        setPendingTrigger((t) => t + 1);
       }
     };
 
@@ -119,21 +129,29 @@ function SubscriptionDeepLinkHandler() {
     const sub = Linking.addEventListener('url', handleUrl);
     Linking.getInitialURL().then(handleReturnFromCheckout);
     return () => sub.remove();
-  }, [refreshTier, user, supabase]);
+  }, [refreshTier, setTierFromSubscription, user, supabase]);
 
   // Process pending session when user becomes available (e.g. cold start from deep link)
   useEffect(() => {
     const sid = pendingSessionId.current;
     if (!sid || !user || !supabase) return;
-    pendingSessionId.current = null;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
+        pendingSessionId.current = null;
+        retryCount.current = 0;
         import('./api/subscription').then(({ confirmCheckoutSession }) =>
-          confirmCheckoutSession(session.access_token, sid).finally(() => refreshTier?.())
+          confirmCheckoutSession(session.access_token, sid).then((tier) => {
+            if (tier === 'premium') setTierFromSubscription?.('premium');
+          }).finally(() => refreshTier?.())
         );
+      } else if (retryCount.current < PENDING_SESSION_MAX_RETRIES) {
+        retryCount.current += 1;
+        setTimeout(() => setPendingTrigger((t) => t + 1), 300);
+      } else {
+        pendingSessionId.current = null;
       }
     });
-  }, [user, supabase, refreshTier]);
+  }, [user, supabase, refreshTier, setTierFromSubscription, pendingTrigger]);
 
   return null;
 }

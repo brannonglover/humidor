@@ -72,6 +72,9 @@ export function AuthProvider({ children }) {
     refreshTier: () => user && supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) fetchTier(session.access_token).then(setTier);
     }),
+    setTierFromSubscription: (newTier) => {
+      if (newTier === 'premium') setTier('premium');
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
