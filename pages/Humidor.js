@@ -1,4 +1,4 @@
-import { View, StyleSheet, Text, SafeAreaView, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Text, SafeAreaView, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AddCigarBtn from '../components/AddCigarBtn';
 import AccountMenu from '../components/AccountMenu';
@@ -9,7 +9,7 @@ import colors from '../theme/colors';
 
 function Humidor({ navigation }) {
   const view = 'humidor';
-  const { user, supabase, actualTier, previewFreeTier, setPreviewFreeTier } = useAuth();
+  const { user, supabase } = useAuth();
 
   return (
     <>
@@ -22,16 +22,6 @@ function Humidor({ navigation }) {
             </View>
             <View style={styles.headerRight}>
               <FeedbackBtn />
-              {user && actualTier === 'premium' && (
-                <Pressable
-                  onPress={() => setPreviewFreeTier((p) => !p)}
-                  style={[styles.signOutBtn, previewFreeTier && styles.previewActive]}
-                >
-                  <Text style={[styles.signOutText, previewFreeTier && styles.previewActiveText]}>
-                    {previewFreeTier ? 'Previewing free' : 'Preview free'}
-                  </Text>
-                </Pressable>
-              )}
               {user && (
                 <AccountMenu onSignOut={() => supabase?.auth.signOut()}>
                   <MaterialCommunityIcons
@@ -87,23 +77,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     marginLeft: 'auto',
-  },
-  signOutBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  signOutText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  previewActive: {
-    backgroundColor: colors.primary + '20',
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  previewActiveText: {
-    color: colors.primary,
-    fontWeight: '600',
   },
 });
