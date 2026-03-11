@@ -13,6 +13,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
@@ -24,6 +25,13 @@ import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 function Pairing() {
   const { tier, supabase, refreshTier } = useAuth();
   const [cigar, setCigar] = useState('');
+
+  // Refresh tier when screen gains focus (e.g. after returning from Stripe)
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshTier?.();
+    }, [refreshTier])
+  );
   const [pairing, setPairing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
