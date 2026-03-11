@@ -179,12 +179,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.screenBg,
   },
   loadingLogo: {
-    height: 48,
-    width: 180,
-    marginBottom: 24,
+    height: 96,
+    width: 360,
+    marginBottom: 48,
   },
   spinner: {
-    marginTop: 8,
+    marginTop: 24,
   },
 });
 
