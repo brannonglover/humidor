@@ -34,7 +34,9 @@ function redirectPage(path, hasSessionId = false) {
   };
 }
 app.get('/subscribe-success', redirectPage('subscribe-success', true));
+app.get('/subscribe-success/', redirectPage('subscribe-success', true));
 app.get('/subscribe-cancel', redirectPage('subscribe-cancel', false));
+app.get('/subscribe-cancel/', redirectPage('subscribe-cancel', false));
 
 // Shared cigar catalog (PostgreSQL)
 app.use('/api/catalog', catalogRoutes);
