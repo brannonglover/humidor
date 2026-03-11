@@ -9,10 +9,20 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://humidor-production-9755.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://srucfmfykauxdnwyyaav.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_J7rp-UeTLUIi2Z0Euv896Q_tBhpWmtk"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://humidor-production-9755.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://srucfmfykauxdnwyyaav.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_J7rp-UeTLUIi2Z0Euv896Q_tBhpWmtk"
+      }
     }
   },
   "submit": {
