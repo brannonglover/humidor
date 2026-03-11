@@ -1,8 +1,12 @@
 /**
  * API base URL for the Cavaro backend.
- * - iOS Simulator: localhost works (simulator shares host network)
- * - Android Emulator: use 10.0.2.2 for localhost
- * - Physical device: use your machine's LAN IP (e.g. 192.168.1.x)
+ *
+ * Local dev (npx expo start): .env.development sets EXPO_PUBLIC_API_URL= so we use:
+ *   - iOS Simulator: localhost
+ *   - Android Emulator: 10.0.2.2
+ *   - Physical device: set EXPO_PUBLIC_API_URL in .env.development.local (e.g. http://192.168.1.x:5001)
+ *
+ * Production: .env or EAS build env sets EXPO_PUBLIC_API_URL to Railway URL.
  */
 import { Platform } from 'react-native';
 

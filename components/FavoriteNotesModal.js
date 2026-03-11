@@ -127,6 +127,14 @@ export default function FavoriteNotesModal({
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled={Platform.OS === 'android'}
             >
+              <DatePickerField
+                label="When you smoked it"
+                value={smokedDate}
+                onChange={setSmokedDate}
+                placeholder="Tap to pick date"
+                optional={true}
+              />
+
               <Text style={styles.label}>Why you liked it</Text>
               <TextInput
                 style={styles.input}
@@ -153,14 +161,6 @@ export default function FavoriteNotesModal({
                 inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                 returnKeyType="done"
                 blurOnSubmit={true}
-              />
-
-              <DatePickerField
-                label="When you smoked it"
-                value={smokedDate}
-                onChange={setSmokedDate}
-                placeholder="Tap to pick date"
-                optional={true}
               />
             </ScrollView>
 
