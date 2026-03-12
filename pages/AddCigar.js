@@ -21,7 +21,7 @@ import { db, COLLECTIONS } from '../db';
 import { fetchCatalog, addCigarToCatalog } from '../api/catalog';
 import { uploadCigarImage } from '../api/upload';
 import { useAuth } from '../context/AuthContext';
-import { createCheckoutSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession } from '../api/subscription';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
@@ -163,8 +163,29 @@ export default function AddCigar() {
             text: 'Subscribe',
             onPress: async () => {
               try {
-                const url = await createCheckoutSession(session.access_token);
-                if (url) await Linking.openURL(url);
+                const result = await subscribeOrManage(session.access_token, tier);
+                if (result?.alreadySubscribed) {
+                  Alert.alert(
+                    "You're already subscribed",
+                    'Would you like to manage your subscription?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Manage subscription',
+                        onPress: async () => {
+                          try {
+                            const url = await createPortalSession(session.access_token);
+                            if (url) await Linking.openURL(url);
+                          } catch (e) {
+                            Alert.alert('Error', e.message || 'Could not open subscription management');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                } else if (typeof result === 'string') {
+                  await Linking.openURL(result);
+                }
               } catch (e) {
                 Alert.alert('Error', e.message || 'Could not open checkout');
               }

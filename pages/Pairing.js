@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
-import { createCheckoutSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession } from '../api/subscription';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
@@ -48,9 +48,31 @@ function Pairing() {
     }
     setCheckoutLoading(true);
     try {
-      const url = await createCheckoutSession(session.access_token);
-      if (url) await Linking.openURL(url);
-      refreshTier?.();
+      const result = await subscribeOrManage(session.access_token, tier);
+      if (result?.alreadySubscribed) {
+        Alert.alert(
+          "You're already subscribed",
+          'Would you like to manage your subscription?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Manage subscription',
+              onPress: async () => {
+                try {
+                  const url = await createPortalSession(session.access_token);
+                  if (url) await Linking.openURL(url);
+                  refreshTier?.();
+                } catch (e) {
+                  Alert.alert('Error', e.message || 'Could not open subscription management');
+                }
+              },
+            },
+          ]
+        );
+      } else if (typeof result === 'string') {
+        await Linking.openURL(result);
+        refreshTier?.();
+      }
     } catch (err) {
       Alert.alert('Error', err.message || 'Could not open checkout');
     } finally {

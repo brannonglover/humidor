@@ -18,7 +18,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db } from '../db';
 import { useAuth } from '../context/AuthContext';
-import { createCheckoutSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession } from '../api/subscription';
 import { uploadCigarImage } from '../api/upload';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
@@ -71,8 +71,29 @@ export default function EditCigar() {
             text: 'Subscribe',
             onPress: async () => {
               try {
-                const url = await createCheckoutSession(session.access_token);
-                if (url) await Linking.openURL(url);
+                const result = await subscribeOrManage(session.access_token, tier);
+                if (result?.alreadySubscribed) {
+                  Alert.alert(
+                    "You're already subscribed",
+                    'Would you like to manage your subscription?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Manage subscription',
+                        onPress: async () => {
+                          try {
+                            const url = await createPortalSession(session.access_token);
+                            if (url) await Linking.openURL(url);
+                          } catch (e) {
+                            Alert.alert('Error', e.message || 'Could not open subscription management');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                } else if (typeof result === 'string') {
+                  await Linking.openURL(result);
+                }
               } catch (e) {
                 Alert.alert('Error', e.message || 'Could not open checkout');
               }

@@ -40,5 +40,40 @@ export async function createCheckoutSession(accessToken, successUrl, cancelUrl) 
   if (!res.ok) {
     throw new Error(data.error || 'Failed to create checkout');
   }
+  if (data.alreadySubscribed) {
+    return { alreadySubscribed: true };
+  }
+  return data.url;
+}
+
+/**
+ * Checkout or portal - use before createCheckoutSession.
+ * If tier is 'premium', returns { alreadySubscribed: true } without calling the API.
+ */
+export async function subscribeOrManage(accessToken, tier, successUrl, cancelUrl) {
+  if (tier === 'premium') {
+    return { alreadySubscribed: true };
+  }
+  return createCheckoutSession(accessToken, successUrl, cancelUrl);
+}
+
+/**
+ * Create Stripe Customer Portal session for managing subscription.
+ * Returns portal URL or throws if no active subscription.
+ */
+export async function createPortalSession(accessToken) {
+  const res = await fetch(`${API_BASE_URL}/api/subscription/create-portal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to open subscription management');
+  }
   return data.url;
 }

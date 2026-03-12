@@ -35,10 +35,15 @@ router.post('/create-checkout', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      'SELECT stripe_customer_id FROM user_profiles WHERE id = $1',
+      'SELECT tier, stripe_customer_id FROM user_profiles WHERE id = $1',
       [user.id]
     );
+    const tier = rows[0]?.tier;
     let customerId = rows[0]?.stripe_customer_id;
+
+    if (tier === 'premium') {
+      return res.status(200).json({ alreadySubscribed: true });
+    }
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -70,6 +75,50 @@ router.post('/create-checkout', async (req, res) => {
   } catch (err) {
     console.error('Checkout error:', err);
     return res.status(500).json({ error: err.message || 'Failed to create checkout' });
+  }
+});
+
+/**
+ * POST /api/subscription/create-portal
+ * Headers: Authorization: Bearer <supabase_access_token>
+ * Returns: { url: string } - Stripe Customer Portal URL for managing subscription
+ */
+router.post('/create-portal', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token || !supabase || !stripe) {
+    return res.status(503).json({ error: 'Subscription not configured' });
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { rows } = await pool.query(
+      'SELECT tier, stripe_customer_id FROM user_profiles WHERE id = $1',
+      [user.id]
+    );
+    const tier = rows[0]?.tier;
+    const customerId = rows[0]?.stripe_customer_id;
+
+    if (tier !== 'premium' || !customerId) {
+      return res.status(400).json({ error: 'No active subscription to manage' });
+    }
+
+    const baseUrl = (req.protocol || 'http') + '://' + (req.get('host') || 'localhost:5001');
+    const returnUrl = `${baseUrl}/subscribe-success`;
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+
+    return res.json({ url: portalSession.url });
+  } catch (err) {
+    console.error('Portal error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create portal session' });
   }
 });
 

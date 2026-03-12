@@ -13,7 +13,7 @@ import StrengthProfileModal from './StrengthProfileModal';
 import StrengthIndicator, { getOverallStrength } from './StrengthIndicator';
 import { parseStrengthProfile } from './StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
-import { createCheckoutSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession } from '../api/subscription';
 
 function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProfile }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -335,9 +335,31 @@ export default function CigarList({ view, onEditCigar }) {
           text: 'Subscribe',
           onPress: async () => {
             try {
-              const url = await createCheckoutSession(session.access_token);
-              if (url) await Linking.openURL(url);
-              refreshTier?.();
+              const result = await subscribeOrManage(session.access_token, tier);
+              if (result?.alreadySubscribed) {
+                Alert.alert(
+                  "You're already subscribed",
+                  'Would you like to manage your subscription?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Manage subscription',
+                      onPress: async () => {
+                        try {
+                          const url = await createPortalSession(session.access_token);
+                          if (url) await Linking.openURL(url);
+                          refreshTier?.();
+                        } catch (e) {
+                          Alert.alert('Error', e.message || 'Could not open subscription management');
+                        }
+                      },
+                    },
+                  ]
+                );
+              } else if (typeof result === 'string') {
+                await Linking.openURL(result);
+                refreshTier?.();
+              }
             } catch (e) {
               Alert.alert('Error', e.message || 'Could not open checkout');
             }
