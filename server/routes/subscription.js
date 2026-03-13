@@ -16,6 +16,24 @@ const supabase = supabaseUrl && supabaseServiceKey
   : null;
 
 /**
+ * GET /api/subscription/status
+ * Returns whether subscription is configured (for debugging TestFlight/Railway setup).
+ * No auth required.
+ */
+router.get('/status', (_req, res) => {
+  const missing = [];
+  if (!stripeSecret) missing.push('STRIPE_SECRET_KEY');
+  if (!stripePriceId) missing.push('STRIPE_PRICE_ID');
+  if (!supabaseUrl) missing.push('SUPABASE_URL');
+  if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  const ok = missing.length === 0;
+  res.json({
+    configured: ok,
+    ...(ok ? {} : { missing }),
+  });
+});
+
+/**
  * POST /api/subscription/create-checkout
  * Body: { successUrl?, cancelUrl? }
  * Headers: Authorization: Bearer <supabase_access_token>
@@ -34,6 +52,14 @@ router.post('/create-checkout', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    // Ensure user_profiles row exists (may not exist if user never hit /api/user/tier)
+    await pool.query(
+      `INSERT INTO user_profiles (id, tier, updated_at)
+       VALUES ($1, 'free', NOW())
+       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()`,
+      [user.id]
+    );
+
     const { rows } = await pool.query(
       'SELECT tier, stripe_customer_id FROM user_profiles WHERE id = $1',
       [user.id]
@@ -47,7 +73,7 @@ router.post('/create-checkout', async (req, res) => {
 
     if (!customerId) {
       const customer = await stripe.customers.create({
-        email: user.email,
+        email: user.email || undefined,
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
@@ -73,8 +99,11 @@ router.post('/create-checkout', async (req, res) => {
 
     return res.json({ url: session.url });
   } catch (err) {
+    // Stripe errors: err.message, err.code, err.type
+    const msg = err.message || err.type || 'Failed to create checkout';
+    const code = err.code ? ` (${err.code})` : '';
     console.error('Checkout error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to create checkout' });
+    return res.status(500).json({ error: msg + code });
   }
 });
 
