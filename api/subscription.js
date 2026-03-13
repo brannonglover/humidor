@@ -36,14 +36,34 @@ export async function createCheckoutSession(accessToken, successUrl, cancelUrl) 
     }),
   });
 
-  const data = await res.json().catch(() => ({}));
+  const text = await res.text();
+  const data = (() => {
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return {};
+    }
+  })();
+
   if (!res.ok) {
-    throw new Error(data.error || 'Failed to create checkout');
+    const msg = data.error || (res.status === 503 ? 'Subscription not configured. Check Railway env vars.' : `Server error ${res.status}`);
+    const hint = !data.error && text?.slice(0, 100) ? ` (${text.slice(0, 80)}…)` : '';
+    throw new Error(msg + hint);
   }
   if (data.alreadySubscribed) {
     return { alreadySubscribed: true };
   }
   return data.url;
+}
+
+/**
+ * Check if subscription is configured on the server (for debugging).
+ * Returns { configured: boolean, missing?: string[] }
+ */
+export async function getSubscriptionStatus() {
+  const res = await fetch(`${API_BASE_URL}/api/subscription/status`);
+  const data = await res.json().catch(() => ({}));
+  return data;
 }
 
 /**

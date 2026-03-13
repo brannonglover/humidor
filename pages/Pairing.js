@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
-import { subscribeOrManage, createPortalSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession, getSubscriptionStatus } from '../api/subscription';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
@@ -74,7 +74,29 @@ function Pairing() {
         refreshTier?.();
       }
     } catch (err) {
-      Alert.alert('Error', err.message || 'Could not open checkout');
+      const msg = err.message || 'Could not open checkout';
+      Alert.alert(
+        'Subscribe failed',
+        msg + '\n\nTap "Check setup" to verify server configuration.',
+        [
+          { text: 'OK', style: 'cancel' },
+          {
+            text: 'Check setup',
+            onPress: async () => {
+              try {
+                const status = await getSubscriptionStatus();
+                if (status.configured) {
+                  Alert.alert('Setup OK', 'Server has all required env vars. The error may be from Stripe or auth. Check Railway logs.');
+                } else {
+                  Alert.alert('Setup incomplete', `Missing on server: ${(status.missing || []).join(', ')}\n\nAdd these in Railway → Variables.`);
+                }
+              } catch (e) {
+                Alert.alert('Cannot reach server', e.message || 'Check EXPO_PUBLIC_API_URL and that the server is running.');
+              }
+            },
+          },
+        ]
+      );
     } finally {
       setCheckoutLoading(false);
     }
