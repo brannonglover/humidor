@@ -23,7 +23,6 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.brannonglover.humidor"
@@ -43,8 +42,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "c989e281-35f0-4f24-93f0-7008e2c041b6"
+        "projectId": "b9407779-7a2d-46f7-8626-3a5091f02052"
       }
-    }
+    },
+    "owner": "brannonglover"
   }
 }

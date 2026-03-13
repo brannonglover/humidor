@@ -62,6 +62,12 @@ export async function createCheckoutSession(accessToken, successUrl, cancelUrl) 
  */
 export async function getSubscriptionStatus() {
   const res = await fetch(`${API_BASE_URL}/api/subscription/status`);
+  if (res.status === 404) {
+    throw new Error(
+      `Status endpoint not found (404). The server at ${API_BASE_URL} may be outdated or a different project. ` +
+      'Deploy the latest server code to Railway, or ensure your app points to the correct API (check eas.json EXPO_PUBLIC_API_URL).'
+    );
+  }
   const text = await res.text();
   let data = {};
   try {
