@@ -58,12 +58,21 @@ export async function createCheckoutSession(accessToken, successUrl, cancelUrl) 
 
 /**
  * Check if subscription is configured on the server (for debugging).
- * Returns { configured: boolean, missing?: string[] }
+ * Returns { configured: boolean, missing: string[] }
  */
 export async function getSubscriptionStatus() {
   const res = await fetch(`${API_BASE_URL}/api/subscription/status`);
-  const data = await res.json().catch(() => ({}));
-  return data;
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`Server returned invalid JSON (${res.status}). Check ${API_BASE_URL}/api/subscription/status in a browser.`);
+  }
+  return {
+    configured: !!data.configured,
+    missing: Array.isArray(data.missing) ? data.missing : [],
+  };
 }
 
 /**

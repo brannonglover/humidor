@@ -18,6 +18,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
 import { subscribeOrManage, createPortalSession, getSubscriptionStatus } from '../api/subscription';
+import { API_BASE_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
@@ -88,7 +89,11 @@ function Pairing() {
                 if (status.configured) {
                   Alert.alert('Setup OK', 'Server has all required env vars. The error may be from Stripe or auth. Check Railway logs.');
                 } else {
-                  Alert.alert('Setup incomplete', `Missing on server: ${(status.missing || []).join(', ')}\n\nAdd these in Railway → Variables.`);
+                  const missing = Array.isArray(status.missing) ? status.missing : [];
+                  const missingList = missing.length > 0
+                    ? missing.join(', ')
+                    : `Could not determine — open ${API_BASE_URL}/api/subscription/status in a browser`;
+                  Alert.alert('Setup incomplete', `Missing on server: ${missingList}\n\nAdd these in Railway → Variables.`);
                 }
               } catch (e) {
                 Alert.alert('Cannot reach server', e.message || 'Check EXPO_PUBLIC_API_URL and that the server is running.');

@@ -27,10 +27,9 @@ router.get('/status', (_req, res) => {
   if (!supabaseUrl) missing.push('SUPABASE_URL');
   if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
   if (!process.env.DATABASE_URL) missing.push('DATABASE_URL');
-  const ok = missing.length === 0;
   res.json({
-    configured: ok,
-    ...(ok ? {} : { missing }),
+    configured: missing.length === 0,
+    missing,
   });
 });
 
