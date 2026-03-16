@@ -16,6 +16,7 @@ async function initCatalog() {
         id SERIAL PRIMARY KEY,
         brand TEXT NOT NULL,
         name TEXT NOT NULL,
+        line TEXT,
         description TEXT,
         wrapper TEXT,
         binder TEXT,
@@ -26,6 +27,7 @@ async function initCatalog() {
         UNIQUE(brand, name, length)
       )
     `);
+    await client.query('ALTER TABLE cigar_catalog ADD COLUMN IF NOT EXISTS line TEXT');
     await client.query('CREATE INDEX IF NOT EXISTS idx_catalog_brand ON cigar_catalog(brand)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_catalog_brand_name ON cigar_catalog(brand, name)');
 
@@ -37,12 +39,13 @@ async function initCatalog() {
           const length = size.length || '';
           const image = size.image || cigar.image || '';
           await client.query(
-            `INSERT INTO cigar_catalog (brand, name, description, wrapper, binder, filler, length, image)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `INSERT INTO cigar_catalog (brand, name, line, description, wrapper, binder, filler, length, image)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (brand, name, length) DO NOTHING`,
             [
               cigar.brand || '',
               cigar.name || '',
+              cigar.line || null,
               cigar.description || '',
               cigar.wrapper || '',
               cigar.binder || '',

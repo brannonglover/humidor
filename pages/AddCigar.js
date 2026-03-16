@@ -57,6 +57,7 @@ export default function AddCigar() {
   // Catalog selection state
   const [cigarBrand, setCigarBrand] = useState('');
   const [cigarName, setCigarName] = useState('');
+  const [cigarLine, setCigarLine] = useState('');
   const [cigarSize, setCigarSize] = useState('');
   const [cigarDescription, setCigarDescription] = useState('');
   const [cigarWrapper, setCigarWrapper] = useState('');
@@ -69,6 +70,7 @@ export default function AddCigar() {
   // Custom form state
   const [customBrand, setCustomBrand] = useState('');
   const [customName, setCustomName] = useState('');
+  const [customLine, setCustomLine] = useState('');
   const [customSize, setCustomSize] = useState('');
   const [customDesc, setCustomDesc] = useState('');
   const [customWrapper, setCustomWrapper] = useState('');
@@ -124,9 +126,9 @@ export default function AddCigar() {
           await db.execAsync('DELETE FROM cigar_catalog');
           for (const c of rows) {
             await db.runAsync(
-              `INSERT OR IGNORE INTO cigar_catalog (brand, name, description, wrapper, binder, filler, length, image)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              c.brand, c.name, c.description || '', c.wrapper || '', c.binder || '', c.filler || '', c.length, c.image || ''
+              `INSERT OR IGNORE INTO cigar_catalog (brand, name, line, description, wrapper, binder, filler, length, image)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              c.brand, c.name, c.line || '', c.description || '', c.wrapper || '', c.binder || '', c.filler || '', c.length, c.image || ''
             );
           }
         });
@@ -156,6 +158,7 @@ export default function AddCigar() {
     if (match) {
       setCigarBrand(match.brand || '');
       setCigarName(match.name || '');
+      setCigarLine(match.line || '');
       setCigarSize(match.length || '');
       setCigarDescription(match.description || '');
       setCigarWrapper(match.wrapper || '');
@@ -275,6 +278,7 @@ export default function AddCigar() {
     setCigarSize('');
     if (byBrandAndName.length > 0) {
       const first = byBrandAndName[0];
+      setCigarLine(first.line || '');
       setCigarDescription(first.description || '');
       setCigarWrapper(first.wrapper || '');
       setCigarBinder(first.binder || '');
@@ -304,9 +308,10 @@ export default function AddCigar() {
         }
       }
       await db.runAsync(
-        'INSERT INTO cigars (brand, name, description, wrapper, binder, filler, length, image, quantity, collection, date_added) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO cigars (brand, name, line, description, wrapper, binder, filler, length, image, quantity, collection, date_added) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         cigarBrand.trim(),
         cigarName.trim(),
+        cigarLine.trim() || null,
         cigarDescription,
         cigarWrapper,
         cigarBinder,
@@ -355,6 +360,7 @@ export default function AddCigar() {
       await addCigarToCatalog({
         brand: customBrand.trim(),
         name: customName.trim(),
+        line: customLine.trim() || '',
         description: customDesc || '',
         wrapper: customWrapper || '',
         binder: customBinder || '',
@@ -366,9 +372,10 @@ export default function AddCigar() {
       const qty = Math.max(1, parseInt(customQuantity, 10) || 1);
       const dateToUse = dateAdded?.trim() || new Date().toISOString().slice(0, 10);
       await db.runAsync(
-        'INSERT INTO cigars (brand, name, description, wrapper, binder, filler, length, image, quantity, collection, date_added) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO cigars (brand, name, line, description, wrapper, binder, filler, length, image, quantity, collection, date_added) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         customBrand.trim(),
         customName.trim(),
+        customLine.trim() || null,
         customDesc || '',
         customWrapper || '',
         customBinder || '',
@@ -465,6 +472,19 @@ export default function AddCigar() {
                   zIndex={2000}
                   zIndexInverse={2000}
                   onChangeValue={(value) => fillCigarSize(value)}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Line / Series (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={cigarLine}
+                  onChangeText={setCigarLine}
+                  placeholder="e.g. Blue Label, Series JJ"
+                  placeholderTextColor={colors.placeholderText}
+                  autoCapitalize="words"
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                 />
               </View>
 
@@ -592,6 +612,19 @@ export default function AddCigar() {
                   autoCapitalize="words"
                   inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                   returnKeyType="done"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Line / Series (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={customLine}
+                  onChangeText={setCustomLine}
+                  placeholder="e.g. Blue Label, Series JJ"
+                  placeholderTextColor={colors.placeholderText}
+                  autoCapitalize="words"
+                  inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
                 />
               </View>
 

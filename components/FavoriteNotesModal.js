@@ -118,7 +118,7 @@ export default function FavoriteNotesModal({
           <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}>
             <Text style={styles.title}>{mode === 'edit' ? 'Update favorite' : 'Add to favorites'}</Text>
             <Text style={styles.subtitle}>
-              {cigar.brand ?? ''} · {cigar.name ?? ''}
+              {[cigar.brand, cigar.line, cigar.name].filter(Boolean).join(' · ') || '—'}
             </Text>
 
             <ScrollView

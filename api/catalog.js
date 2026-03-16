@@ -27,6 +27,7 @@ export async function addCigarToCatalog(cigar) {
       body: JSON.stringify({
         brand: cigar.brand,
         name: cigar.name,
+        line: cigar.line || '',
         description: cigar.description,
         wrapper: cigar.wrapper,
         binder: cigar.binder,

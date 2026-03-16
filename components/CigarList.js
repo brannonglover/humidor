@@ -660,7 +660,9 @@ export default function CigarList({ view, onEditCigar }) {
             <View style={styles.cigarInfo}>
               <Text style={styles.listItem}>{cigar.name ?? 'Unknown'}</Text>
               <View style={styles.subTextWrap}>
-                <Text style={styles.subText}>{cigar.brand ?? ''}</Text>
+                <Text style={styles.subText}>
+                  {[cigar.brand, cigar.line].filter(Boolean).join(' · ') || '—'}
+                </Text>
                 <Text style={styles.subText}>Size: {cigar.length ?? '—'}</Text>
               </View>
             </View>

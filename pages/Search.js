@@ -9,13 +9,17 @@ import {
   ScrollView,
   ActivityIndicator,
   SafeAreaView,
+  Alert,
+  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { searchReviewsByTaste, getTopReviewedCigars } from '../api/reviews';
 import { fetchCatalog } from '../api/catalog';
+import { subscribeOrManage, createPortalSession } from '../api/subscription';
 import { db } from '../db';
 import { COMMON_FLAVORS } from '../components/StrengthProfileModal';
+import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
 function filterCatalogByTaste(catalog, keywords) {
@@ -40,7 +44,9 @@ function SearchCigarCard({ cigar, expanded, onToggleExpand, onAddToHumidor, show
           <View style={styles.cardInfo}>
             <Text style={styles.cardName}>{cigar.name ?? 'Unknown'}</Text>
             <View style={styles.cardMeta}>
-              <Text style={styles.cardBrand}>{cigar.brand ?? ''}</Text>
+              <Text style={styles.cardBrand}>
+              {[cigar.brand, cigar.line].filter(Boolean).join(' · ') || '—'}
+            </Text>
               <Text style={styles.cardSize}>Size: {cigar.length ?? '—'}</Text>
             </View>
           </View>
@@ -99,6 +105,7 @@ function SearchCigarCard({ cigar, expanded, onToggleExpand, onAddToHumidor, show
 }
 
 export default function Search({ navigation }) {
+  const { tier, supabase, refreshTier } = useAuth();
   const [query, setQuery] = useState('');
   const [selectedFlavors, setSelectedFlavors] = useState([]);
   const [topCigars, setTopCigars] = useState([]);
@@ -106,35 +113,50 @@ export default function Search({ navigation }) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState([]);
+  const [searchLimitReached, setSearchLimitReached] = useState(false);
+  const [searchSignInRequired, setSearchSignInRequired] = useState(false);
 
   const runSearch = useCallback(async () => {
     const keywords = [
       ...selectedFlavors,
       ...(query.trim() ? query.trim().toLowerCase().split(/\s+/) : []),
     ].filter(Boolean);
+    setSearchLimitReached(false);
+    setSearchSignInRequired(false);
     if (keywords.length > 0) {
       setSearchLoading(true);
       try {
-        let rows = await searchReviewsByTaste(keywords);
+        const token = (await supabase?.auth.getSession())?.data?.session?.access_token ?? null;
+        let rows = await searchReviewsByTaste(keywords, token);
         if (!rows?.length && catalog?.length > 0) {
           rows = filterCatalogByTaste(catalog, keywords);
         }
         setSearchResults(rows ?? []);
       } catch (err) {
-        setSearchResults([]);
+        if (err.code === 'SEARCH_LIMIT_EXCEEDED') {
+          setSearchLimitReached(true);
+          setSearchResults([]);
+        } else if (err.code === 'SIGN_IN_REQUIRED') {
+          setSearchSignInRequired(true);
+          setSearchResults([]);
+        } else {
+          setSearchResults([]);
+        }
       } finally {
         setSearchLoading(false);
       }
     } else {
       setSearchResults([]);
     }
-  }, [query, selectedFlavors, catalog]);
+  }, [query, selectedFlavors, catalog, supabase]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const token = (await supabase?.auth.getSession())?.data?.session?.access_token ?? null;
+      const canSeeTop = tier === 'premium' && token;
       const [top, cat] = await Promise.all([
-        getTopReviewedCigars(5),
+        canSeeTop ? getTopReviewedCigars(5, token) : Promise.resolve([]),
         fetchCatalog().catch(() => db.getAllAsync('SELECT * FROM cigar_catalog ORDER BY brand, name, length')),
       ]);
       setTopCigars(top ?? []);
@@ -146,17 +168,38 @@ export default function Search({ navigation }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tier, supabase]);
 
   useFocusEffect(
     useCallback(() => {
+      refreshTier?.();
       loadData();
-    }, [loadData])
+    }, [loadData, refreshTier])
   );
 
   useEffect(() => {
     runSearch();
   }, [runSearch]);
+
+  const handleUpgradePress = async () => {
+    if (!supabase) {
+      Alert.alert('Not configured', 'Supabase auth is not set up.');
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      Alert.alert('Sign in required', 'Please sign in to upgrade to premium.');
+      return;
+    }
+    try {
+      const result = await subscribeOrManage(session.access_token, tier);
+      if (result?.alreadySubscribed) return;
+      if (typeof result === 'string') await Linking.openURL(result);
+      refreshTier?.();
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not open subscription');
+    }
+  };
 
   const toggleFlavor = (flavor) => {
     setSelectedFlavors((prev) =>
@@ -244,7 +287,7 @@ export default function Search({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {topCigars.length > 0 && (
+          {tier === 'premium' && topCigars.length > 0 && (
             <View style={styles.section}>
               <Pressable
                 style={styles.topSectionHeader}
@@ -281,11 +324,40 @@ export default function Search({ navigation }) {
             </View>
           )}
 
+          {tier === 'free' && (
+            <View style={styles.section}>
+              <View style={styles.topSectionHeader}>
+                <View>
+                  <Text style={styles.sectionTitle}>Top 5 from community reviews</Text>
+                  <Text style={styles.topSectionSubtitle}>
+                    Upgrade to premium to see highest-rated cigars
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="lock" size={24} color={colors.textMuted} />
+              </View>
+              <Pressable style={styles.upgradeCard} onPress={handleUpgradePress}>
+                <Text style={styles.upgradeCardText}>Upgrade to see top cigars</Text>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+              </Pressable>
+            </View>
+          )}
+
           {hasSearch && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Search results</Text>
               {searchLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} style={styles.searchSpinner} />
+              ) : searchLimitReached ? (
+                <View style={styles.limitReachedWrap}>
+                  <Text style={styles.limitReachedText}>
+                    Free users get 3 searches per day. Upgrade for unlimited searches.
+                  </Text>
+                  <Pressable style={styles.upgradeBtn} onPress={handleUpgradePress}>
+                    <Text style={styles.upgradeBtnText}>Upgrade to premium</Text>
+                  </Pressable>
+                </View>
+              ) : searchSignInRequired ? (
+                <Text style={styles.emptyText}>Sign in to search community reviews.</Text>
               ) : !hasResults ? (
                 <Text style={styles.emptyText}>No cigars match that taste profile in community reviews.</Text>
               ) : (
@@ -306,7 +378,7 @@ export default function Search({ navigation }) {
             </View>
           )}
 
-          {!hasSearch && topCigars.length === 0 && (
+          {!hasSearch && tier === 'premium' && topCigars.length === 0 && (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="cigar" size={48} color={colors.textMuted} />
               <Text style={styles.emptyStateText}>
@@ -570,5 +642,40 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
+  },
+  upgradeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: 16,
+  },
+  upgradeCardText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  limitReachedWrap: {
+    paddingVertical: 16,
+  },
+  limitReachedText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  upgradeBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  upgradeBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.screenBg,
   },
 });

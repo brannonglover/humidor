@@ -44,6 +44,10 @@ export async function initDatabase() {
     await db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_catalog_brand_name ON cigar_catalog(brand, name)
     `);
+    const catalogInfo = await db.getAllAsync('PRAGMA table_info(cigar_catalog)');
+    if (!catalogInfo.some((c) => c.name === 'line')) {
+      await db.execAsync('ALTER TABLE cigar_catalog ADD COLUMN line TEXT');
+    }
 
     // Create user cigars table
     await db.execAsync(`
@@ -105,6 +109,13 @@ export async function initDatabase() {
     const hasDateAdded = tableInfo5.some((c) => c.name === 'date_added');
     if (!hasDateAdded) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN date_added TEXT');
+    }
+
+    // Add line column if missing (sub-brand / series, e.g. Black Market)
+    const tableInfo6 = await db.getAllAsync('PRAGMA table_info(cigars)');
+    const hasLine = tableInfo6.some((c) => c.name === 'line');
+    if (!hasLine) {
+      await db.execAsync('ALTER TABLE cigars ADD COLUMN line TEXT');
     }
 
     // Create smoke_history table (tracks when each cigar was smoked, for quantity > 1)

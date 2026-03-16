@@ -152,7 +152,7 @@ export default function StrengthProfileModal({
         <View style={styles.sheet}>
           <Text style={styles.title}>Strength Profile</Text>
           <Text style={styles.subtitle}>
-            {cigar.brand ?? ''} · {cigar.name ?? ''}
+            {[cigar.brand, cigar.line, cigar.name].filter(Boolean).join(' · ') || '—'}
           </Text>
           <Text style={styles.hint}>
             Document how strength and flavor evolve through the smoke

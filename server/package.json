@@ -9,7 +9,8 @@
     "init-catalog": "node scripts/initCatalog.js",
     "init-user-profiles": "node scripts/init-user-profiles.js",
     "init-reviews": "node scripts/initReviews.js",
-    "seed-reviews": "node scripts/seedReviews.js"
+    "seed-reviews": "node scripts/seedReviews.js",
+    "add-line-column": "node scripts/addLineColumn.js"
   },
   "author": "",
   "license": "ISC",

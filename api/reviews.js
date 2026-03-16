@@ -2,23 +2,54 @@ import { API_BASE_URL } from './config';
 
 const REVIEWS_URL = `${API_BASE_URL}/api/reviews`;
 
-export async function searchReviewsByTaste(keywords) {
+/**
+ * Search community reviews by taste keywords.
+ * @param {string[]} keywords - Search terms
+ * @param {string} [accessToken] - Supabase access token (required for auth)
+ * @returns {Promise<object[]>} Cigar results
+ * @throws {Error} When search limit exceeded (429) or other errors
+ */
+export async function searchReviewsByTaste(keywords, accessToken) {
   if (!keywords?.length) return [];
   const q = keywords.map((k) => String(k).trim()).filter(Boolean).join(',');
   if (!q) return [];
+  const headers = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   try {
-    const res = await fetch(`${REVIEWS_URL}/search?q=${encodeURIComponent(q)}`);
+    const res = await fetch(`${REVIEWS_URL}/search?q=${encodeURIComponent(q)}`, { headers });
+    if (res.status === 429) {
+      const data = await res.json().catch(() => ({}));
+      const err = new Error(data.message || data.error || 'Daily search limit reached');
+      err.code = 'SEARCH_LIMIT_EXCEEDED';
+      err.searchesRemaining = data.searchesRemaining ?? 0;
+      throw err;
+    }
+    if (res.status === 401) {
+      const err = new Error('Sign in required to search');
+      err.code = 'SIGN_IN_REQUIRED';
+      throw err;
+    }
     if (!res.ok) throw new Error(`Search failed: ${res.status}`);
     return res.json();
   } catch (err) {
+    if (err.code === 'SEARCH_LIMIT_EXCEEDED') throw err;
     console.warn('Reviews search failed:', err.message);
     return [];
   }
 }
 
-export async function getTopReviewedCigars(limit = 5) {
+/**
+ * Get top-rated cigars from community reviews. Premium only.
+ * @param {number} [limit=5]
+ * @param {string} [accessToken] - Supabase access token (required for auth)
+ * @returns {Promise<object[]>} Cigar results, or [] if free tier / not ok
+ */
+export async function getTopReviewedCigars(limit = 5, accessToken) {
+  const headers = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   try {
-    const res = await fetch(`${REVIEWS_URL}/top?limit=${limit}`);
+    const res = await fetch(`${REVIEWS_URL}/top?limit=${limit}`, { headers });
+    if (res.status === 401 || res.status === 403) return [];
     if (!res.ok) throw new Error(`Top failed: ${res.status}`);
     const rows = await res.json();
     return rows ?? [];

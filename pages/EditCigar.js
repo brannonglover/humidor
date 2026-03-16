@@ -39,6 +39,7 @@ export default function EditCigar() {
 
   const [brand, setBrand] = useState(cigar?.brand ?? '');
   const [name, setName] = useState(cigar?.name ?? '');
+  const [line, setLine] = useState(cigar?.line ?? '');
   const [size, setSize] = useState(cigar?.length ?? '');
   const [description, setDescription] = useState(cigar?.description ?? '');
   const [wrapper, setWrapper] = useState(cigar?.wrapper ?? '');
@@ -170,9 +171,10 @@ export default function EditCigar() {
       const qty = Math.max(1, parseInt(quantity, 10) || 1);
       const dateAddedVal = dateAdded.trim() ? dateAdded.trim() : null;
       await db.runAsync(
-        `UPDATE cigars SET brand = ?, name = ?, description = ?, wrapper = ?, binder = ?, filler = ?, length = ?, image = ?, quantity = ?, date_added = ? WHERE id = ?`,
+        `UPDATE cigars SET brand = ?, name = ?, line = ?, description = ?, wrapper = ?, binder = ?, filler = ?, length = ?, image = ?, quantity = ?, date_added = ? WHERE id = ?`,
         brand.trim(),
         name.trim(),
+        line.trim() || null,
         description || '',
         wrapper || '',
         binder || '',
@@ -259,6 +261,19 @@ export default function EditCigar() {
               autoCapitalize="words"
               inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
               returnKeyType="done"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Line / Series (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={line}
+              onChangeText={setLine}
+              placeholder="e.g. Blue Label, Series JJ"
+              placeholderTextColor={colors.placeholderText}
+              autoCapitalize="words"
+              inputAccessoryViewID={KEYBOARD_ACCESSORY_ID}
             />
           </View>
 

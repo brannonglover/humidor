@@ -1,6 +1,77 @@
 const express = require('express');
 const router = express.Router();
+const { createClient } = require('@supabase/supabase-js');
 const pool = require('../config/postgres');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
+
+const FREE_SEARCH_LIMIT_PER_DAY = 3;
+
+/**
+ * Resolve user and tier from Authorization header.
+ * Returns { userId, tier } or null if unauthenticated.
+ */
+async function resolveUserAndTier(req) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token || !supabase) return null;
+
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+
+  await pool.query(
+    `INSERT INTO user_profiles (id, tier, updated_at)
+     VALUES ($1, 'free', NOW())
+     ON CONFLICT (id) DO UPDATE SET updated_at = NOW()`,
+    [user.id]
+  );
+
+  const { rows } = await pool.query(
+    'SELECT tier FROM user_profiles WHERE id = $1',
+    [user.id]
+  );
+  const tier = rows[0]?.tier === 'premium' ? 'premium' : 'free';
+  return { userId: user.id, tier };
+}
+
+/**
+ * Check and increment free user's daily search count.
+ * Returns { allowed: boolean, remaining: number }.
+ */
+async function checkAndIncrementSearchCount(userId) {
+  const now = new Date();
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+  const { rows } = await pool.query(
+    'SELECT search_count, search_count_reset_at FROM user_profiles WHERE id = $1',
+    [userId]
+  );
+  let count = rows[0]?.search_count ?? 0;
+  let resetAt = rows[0]?.search_count_reset_at ? new Date(rows[0].search_count_reset_at) : null;
+
+  if (!resetAt || resetAt < todayStart) {
+    count = 0;
+    resetAt = now;
+    await pool.query(
+      'UPDATE user_profiles SET search_count = 0, search_count_reset_at = $1, updated_at = NOW() WHERE id = $2',
+      [resetAt, userId]
+    );
+  }
+
+  if (count >= FREE_SEARCH_LIMIT_PER_DAY) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  await pool.query(
+    'UPDATE user_profiles SET search_count = search_count + 1, updated_at = NOW() WHERE id = $1',
+    [userId]
+  );
+  return { allowed: true, remaining: FREE_SEARCH_LIMIT_PER_DAY - count - 1 };
+}
 
 /**
  * Build LIKE conditions for taste search across review fields.
@@ -21,8 +92,15 @@ function buildSearchConditions(keywords) {
 }
 
 // GET /api/reviews/search?q=earthy,woody,pepper
+// Requires: Authorization: Bearer <supabase_access_token>
+// Free users: 3 searches per day. Returns 429 when limit exceeded.
 router.get('/search', async (req, res) => {
   try {
+    const auth = await resolveUserAndTier(req);
+    if (!auth) {
+      return res.status(401).json({ error: 'Sign in required to search' });
+    }
+
     const q = (req.query.q || '').trim();
     const keywords = q
       .toLowerCase()
@@ -31,6 +109,18 @@ router.get('/search', async (req, res) => {
     if (keywords.length === 0) {
       return res.json([]);
     }
+
+    if (auth.tier === 'free') {
+      const { allowed, remaining } = await checkAndIncrementSearchCount(auth.userId);
+      if (!allowed) {
+        return res.status(429).json({
+          error: 'Daily search limit reached',
+          searchesRemaining: 0,
+          message: 'Free users get 3 searches per day. Upgrade to premium for unlimited searches.',
+        });
+      }
+    }
+
     const { conditions, params } = buildSearchConditions(keywords);
     const result = await pool.query(
       `SELECT DISTINCT c.id, c.brand, c.name, c.description, c.wrapper, c.binder, c.filler, c.length, c.image
@@ -48,8 +138,18 @@ router.get('/search', async (req, res) => {
 });
 
 // GET /api/reviews/top?limit=5
+// Requires: Authorization: Bearer <supabase_access_token>
+// Premium only. Free users get 403.
 router.get('/top', async (req, res) => {
   try {
+    const auth = await resolveUserAndTier(req);
+    if (!auth) {
+      return res.status(401).json({ error: 'Sign in required' });
+    }
+    if (auth.tier === 'free') {
+      return res.status(403).json({ error: 'Premium required to view top cigars' });
+    }
+
     const limit = Math.min(parseInt(req.query.limit, 10) || 5, 20);
     const result = await pool.query(
       `SELECT c.id, c.brand, c.name, c.description, c.wrapper, c.binder, c.filler, c.length, c.image,

@@ -101,7 +101,7 @@ export default function SmokedOneModal({
             <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}>
               <Text style={styles.title}>Mark as smoked</Text>
               <Text style={styles.subtitle}>
-                {cigar.brand ?? ''} · {cigar.name ?? ''}
+                {[cigar.brand, cigar.line, cigar.name].filter(Boolean).join(' · ') || '—'}
               </Text>
               <Text style={styles.hint}>
                 This will decrement the quantity and record when you smoked it.
