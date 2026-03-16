@@ -7,7 +7,9 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "init-catalog": "node scripts/initCatalog.js",
-    "init-user-profiles": "node scripts/init-user-profiles.js"
+    "init-user-profiles": "node scripts/init-user-profiles.js",
+    "init-reviews": "node scripts/initReviews.js",
+    "seed-reviews": "node scripts/seedReviews.js"
   },
   "author": "",
   "license": "ISC",

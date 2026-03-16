@@ -1,0 +1,574 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+  SafeAreaView,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { searchReviewsByTaste, getTopReviewedCigars } from '../api/reviews';
+import { fetchCatalog } from '../api/catalog';
+import { db } from '../db';
+import { COMMON_FLAVORS } from '../components/StrengthProfileModal';
+import colors from '../theme/colors';
+
+function filterCatalogByTaste(catalog, keywords) {
+  if (!keywords?.length || !catalog?.length) return [];
+  const terms = keywords.map((k) => k.toLowerCase());
+  return catalog.filter((c) => {
+    const searchable = [
+      c.description ?? '',
+      c.wrapper ?? '',
+      c.binder ?? '',
+      c.filler ?? '',
+    ].join(' ').toLowerCase();
+    return terms.some((t) => searchable.includes(t));
+  });
+}
+
+function SearchCigarCard({ cigar, expanded, onToggleExpand, onAddToHumidor, showRating }) {
+  return (
+    <View style={styles.card}>
+      <Pressable onPress={onToggleExpand}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardName}>{cigar.name ?? 'Unknown'}</Text>
+            <View style={styles.cardMeta}>
+              <Text style={styles.cardBrand}>{cigar.brand ?? ''}</Text>
+              <Text style={styles.cardSize}>Size: {cigar.length ?? '—'}</Text>
+            </View>
+          </View>
+          <View style={styles.cardRight}>
+            {cigar.image ? (
+              <Image source={{ uri: cigar.image }} style={styles.thumbnail} />
+            ) : null}
+            {showRating && cigar.avg_rating != null && (
+              <View style={styles.ratingBadge}>
+                <Text style={styles.ratingText}>
+                  ★ {cigar.avg_rating}
+                  {cigar.review_count != null ? ` (${cigar.review_count})` : ''}
+                </Text>
+              </View>
+            )}
+            <MaterialCommunityIcons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={24}
+              color={colors.textSecondary}
+              style={styles.chevron}
+            />
+          </View>
+        </View>
+        {!expanded && cigar.description ? (
+          <Text style={styles.cardDesc} numberOfLines={2}>{cigar.description}</Text>
+        ) : null}
+      </Pressable>
+
+      {expanded && (
+        <View style={styles.expandedContent}>
+          {cigar.description ? (
+            <View style={styles.detailBlock}>
+              <Text style={styles.detailLabel}>Description</Text>
+              <Text style={styles.detailText}>{cigar.description}</Text>
+            </View>
+          ) : null}
+          <View style={styles.detailBlock}>
+            <Text style={styles.detailLabel}>Blend</Text>
+            <Text style={styles.detailText}>
+              Wrapper: {cigar.wrapper ?? '—'}{'\n'}
+              Binder: {cigar.binder ?? '—'}{'\n'}
+              Filler: {cigar.filler ?? '—'}
+            </Text>
+          </View>
+          <Pressable
+            style={styles.addBtn}
+            onPress={() => onAddToHumidor(cigar)}
+          >
+            <MaterialCommunityIcons name="plus" size={20} color={colors.screenBg} />
+            <Text style={styles.addBtnText}>Add to humidor</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+export default function Search({ navigation }) {
+  const [query, setQuery] = useState('');
+  const [selectedFlavors, setSelectedFlavors] = useState([]);
+  const [topCigars, setTopCigars] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [catalog, setCatalog] = useState([]);
+
+  const runSearch = useCallback(async () => {
+    const keywords = [
+      ...selectedFlavors,
+      ...(query.trim() ? query.trim().toLowerCase().split(/\s+/) : []),
+    ].filter(Boolean);
+    if (keywords.length > 0) {
+      setSearchLoading(true);
+      try {
+        let rows = await searchReviewsByTaste(keywords);
+        if (!rows?.length && catalog?.length > 0) {
+          rows = filterCatalogByTaste(catalog, keywords);
+        }
+        setSearchResults(rows ?? []);
+      } catch (err) {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  }, [query, selectedFlavors, catalog]);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [top, cat] = await Promise.all([
+        getTopReviewedCigars(5),
+        fetchCatalog().catch(() => db.getAllAsync('SELECT * FROM cigar_catalog ORDER BY brand, name, length')),
+      ]);
+      setTopCigars(top ?? []);
+      setCatalog(cat ?? []);
+    } catch (err) {
+      console.error('Search load error:', err);
+      setTopCigars([]);
+      setCatalog([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  useEffect(() => {
+    runSearch();
+  }, [runSearch]);
+
+  const toggleFlavor = (flavor) => {
+    setSelectedFlavors((prev) =>
+      prev.includes(flavor) ? prev.filter((f) => f !== flavor) : [...prev, flavor]
+    );
+  };
+
+  const hasSearch = query.trim() || selectedFlavors.length > 0;
+  const hasResults = searchResults.length > 0;
+
+  const [expandedCardKey, setExpandedCardKey] = useState(null);
+  const [topSectionExpanded, setTopSectionExpanded] = useState(false);
+
+  const handleAddToHumidor = (cigar) => {
+    navigation.navigate('Cavaro', {
+      screen: 'AddCigar',
+      params: { prefillBrand: cigar.brand, prefillName: cigar.name, prefillLength: cigar.length },
+    });
+  };
+
+  const getCardKey = (c) => `top-${c.id}`;
+  const getSearchCardKey = (c) => `search-${c.id}-${c.brand}-${c.name}-${c.length}`;
+
+  return (
+    <View style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Search</Text>
+        <Text style={styles.subtitle}>Find cigars by taste profile</Text>
+      </View>
+
+      <View style={styles.searchSection}>
+        <View style={styles.searchBar}>
+          <MaterialCommunityIcons name="magnify" size={22} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search flavors: earthy, woody, cocoa..."
+            placeholderTextColor={colors.placeholderText}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {(query || selectedFlavors.length > 0) && (
+            <Pressable
+              onPress={() => {
+                setQuery('');
+                setSelectedFlavors([]);
+              }}
+              hitSlop={12}
+            >
+              <MaterialCommunityIcons name="close-circle" size={22} color={colors.textMuted} />
+            </Pressable>
+          )}
+        </View>
+
+        <Text style={styles.chipLabel}>Quick filters</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+        >
+          {COMMON_FLAVORS.map((f) => {
+            const selected = selectedFlavors.includes(f);
+            return (
+              <Pressable
+                key={f}
+                onPress={() => toggleFlavor(f)}
+                style={[styles.chip, selected && styles.chipSelected]}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{f}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {topCigars.length > 0 && (
+            <View style={styles.section}>
+              <Pressable
+                style={styles.topSectionHeader}
+                onPress={() => setTopSectionExpanded((prev) => !prev)}
+              >
+                <View>
+                  <Text style={styles.sectionTitle}>Top 5 from community reviews</Text>
+                  <Text style={styles.topSectionSubtitle}>
+                    Tap to view highest-rated cigars
+                  </Text>
+                </View>
+                <MaterialCommunityIcons
+                  name={topSectionExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={28}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+              {topSectionExpanded && (
+                topCigars.map((c) => (
+                  <SearchCigarCard
+                    key={c.id}
+                    cigar={c}
+                    showRating
+                    expanded={expandedCardKey === getCardKey(c)}
+                    onToggleExpand={() =>
+                      setExpandedCardKey((prev) =>
+                        prev === getCardKey(c) ? null : getCardKey(c)
+                      )
+                    }
+                    onAddToHumidor={handleAddToHumidor}
+                  />
+                ))
+              )}
+            </View>
+          )}
+
+          {hasSearch && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Search results</Text>
+              {searchLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} style={styles.searchSpinner} />
+              ) : !hasResults ? (
+                <Text style={styles.emptyText}>No cigars match that taste profile in community reviews.</Text>
+              ) : (
+                searchResults.map((c) => (
+                  <SearchCigarCard
+                    key={getSearchCardKey(c)}
+                    cigar={c}
+                    expanded={expandedCardKey === getSearchCardKey(c)}
+                    onToggleExpand={() =>
+                      setExpandedCardKey((prev) =>
+                        prev === getSearchCardKey(c) ? null : getSearchCardKey(c)
+                      )
+                    }
+                    onAddToHumidor={handleAddToHumidor}
+                  />
+                ))
+              )}
+            </View>
+          )}
+
+          {!hasSearch && topCigars.length === 0 && (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="cigar" size={48} color={colors.textMuted} />
+              <Text style={styles.emptyStateText}>
+                Community reviews will appear here once users start rating cigars.
+              </Text>
+              <Text style={styles.emptyStateHint}>
+                Use the search bar or flavor chips to find cigars by taste from shared reviews.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.screenBg,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  searchSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  chipLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 4,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.cardBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  chipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  chipTextSelected: {
+    color: colors.screenBg,
+    fontWeight: '600',
+  },
+  loadingWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  section: {
+    marginBottom: 28,
+  },
+  topSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingRight: 8,
+  },
+  topSectionSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 16,
+  },
+  resultLabel: {
+    fontSize: 14,
+    color: colors.textMuted,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  card: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: 16,
+    marginBottom: 10,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  cardMeta: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  cardBrand: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  cardSize: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  cardRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  chevron: {
+    marginTop: 4,
+  },
+  expandedContent: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  detailBlock: {
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+    marginBottom: 4,
+  },
+  detailText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  addBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.screenBg,
+  },
+  ratingBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  ratingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.screenBg,
+  },
+  searchSpinner: {
+    marginVertical: 16,
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 10,
+    lineHeight: 18,
+  },
+  thumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  emptyStateHint: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+});

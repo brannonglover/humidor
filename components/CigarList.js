@@ -14,6 +14,7 @@ import StrengthIndicator, { getOverallStrength } from './StrengthIndicator';
 import { parseStrengthProfile } from './StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { subscribeOrManage, createPortalSession } from '../api/subscription';
+import { submitReview } from '../api/reviews';
 
 function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProfile }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -306,7 +307,7 @@ const LONG_PRESS_MS = 500;
 const FREE_FAVORITES_LIMIT = 5;
 
 export default function CigarList({ view, onEditCigar }) {
-  const { tier, supabase, refreshTier } = useAuth();
+  const { user, tier, supabase, refreshTier } = useAuth();
   const [show, setShow] = useState(false);
   const [cigarNum, setCigarNum] = useState(0);
   const [viewList, setViewList] = useState([]);
@@ -433,6 +434,7 @@ export default function CigarList({ view, onEditCigar }) {
 
   const handleFavoriteNotesSave = async (notes) => {
     if (!favoriteModalCigar) return;
+    const cigarRef = favoriteModalCigar;
     try {
       if (favoriteModalMode === 'add') {
         const quantity = Math.max(0, parseInt(favoriteModalCigar.quantity, 10) || 1);
@@ -475,6 +477,31 @@ export default function CigarList({ view, onEditCigar }) {
       }
       setFavoriteModalCigar(null);
       refreshList();
+
+      if ((notes.rating ?? 0) > 0 && cigarRef?.brand && cigarRef?.name && cigarRef?.length) {
+        try {
+          await submitReview({
+            brand: cigarRef.brand,
+            name: cigarRef.name,
+            length: cigarRef.length,
+            user_id: user?.id ?? null,
+            rating: notes.rating ?? null,
+            favorite_notes: notes.favorite_notes || null,
+            flavor_profile: cigarRef.flavor_profile || null,
+            construction_quality: cigarRef.construction_quality || null,
+            flavor_changes: cigarRef.flavor_changes || null,
+            strength_profile: cigarRef.strength_profile || null,
+          });
+        } catch (shareErr) {
+          console.warn('Share review failed:', shareErr);
+          Alert.alert(
+            'Could not share',
+            shareErr.message?.includes('catalog') || shareErr.message?.includes('not found')
+              ? 'This cigar isn\'t in the catalog yet. Only catalog cigars can be shared with the community.'
+              : 'Your notes were saved locally, but sharing failed. Try again later.'
+          );
+        }
+      }
     } catch (error) {
       console.log(`Error: ${error}`);
     }
@@ -927,6 +954,7 @@ export default function CigarList({ view, onEditCigar }) {
       <FavoriteNotesModal
         visible={!!favoriteModalCigar}
         cigar={favoriteModalCigar}
+        mode={favoriteModalMode}
         initialNotes={favoriteModalCigar ? {
           favorite_notes: favoriteModalCigar.favorite_notes,
           flavor_profile: favoriteModalCigar.flavor_profile,

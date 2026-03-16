@@ -148,3 +148,63 @@ export async function initDatabase() {
     }
   });
 }
+
+/**
+ * Search user cigars by taste profile keywords.
+ * Searches: flavor_profile, favorite_notes, flavor_changes, strength_profile (flavors JSON),
+ * description, wrapper, binder, filler.
+ * Keywords are OR'd together (any match).
+ */
+export async function searchCigarsByTaste(keywords) {
+  if (!keywords?.length) return [];
+  const terms = keywords
+    .map((k) => String(k).trim().toLowerCase())
+    .filter((k) => k.length > 0);
+  if (terms.length === 0) return [];
+
+  const conditions = [];
+  const params = [];
+  for (const term of terms) {
+    const like = `%${term}%`;
+    conditions.push(
+      `(COALESCE(flavor_profile,'') LIKE ? OR COALESCE(favorite_notes,'') LIKE ? OR ` +
+        `COALESCE(flavor_changes,'') LIKE ? OR COALESCE(strength_profile,'') LIKE ? OR ` +
+        `COALESCE(description,'') LIKE ? OR COALESCE(wrapper,'') LIKE ? OR ` +
+        `COALESCE(binder,'') LIKE ? OR COALESCE(filler,'') LIKE ?)`
+    );
+    params.push(like, like, like, like, like, like, like, like);
+  }
+  const whereClause = conditions.join(' OR ');
+  const rows = await db.getAllAsync(
+    `SELECT * FROM cigars WHERE ${whereClause} ORDER BY collection = 'likes' DESC, brand, name`,
+    params.flat()
+  );
+  return rows ?? [];
+}
+
+/**
+ * Top N cigars from user's reviews (favorites with notes).
+ * Ranks by: (1) is_favorite, (2) number of review fields filled, (3) smoke count.
+ */
+export async function getTopReviewedCigars(limit = 5) {
+  const rows = await db.getAllAsync(`
+    SELECT c.*,
+      (CASE WHEN c.is_favorite = 1 THEN 1 ELSE 0 END) +
+      (CASE WHEN c.favorite_notes IS NOT NULL AND c.favorite_notes != '' THEN 1 ELSE 0 END) +
+      (CASE WHEN c.flavor_profile IS NOT NULL AND c.flavor_profile != '' THEN 1 ELSE 0 END) +
+      (CASE WHEN c.strength_profile IS NOT NULL AND c.strength_profile != '' THEN 1 ELSE 0 END) +
+      (CASE WHEN c.construction_quality IS NOT NULL AND c.construction_quality != '' THEN 1 ELSE 0 END) +
+      (CASE WHEN c.flavor_changes IS NOT NULL AND c.flavor_changes != '' THEN 1 ELSE 0 END) +
+      COALESCE((SELECT COUNT(*) FROM smoke_history sh WHERE sh.cigar_id = c.id), 0) AS review_score
+    FROM cigars c
+    WHERE (c.collection = 'likes' OR (c.collection = 'humidor' AND c.is_favorite = 1))
+      AND (
+        (c.favorite_notes IS NOT NULL AND c.favorite_notes != '')
+        OR (c.flavor_profile IS NOT NULL AND c.flavor_profile != '')
+        OR (c.strength_profile IS NOT NULL AND c.strength_profile != '')
+      )
+    ORDER BY review_score DESC, c.brand, c.name
+    LIMIT ?
+  `, [limit]);
+  return rows ?? [];
+}

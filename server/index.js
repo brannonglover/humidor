@@ -4,6 +4,7 @@ const colors = require('colors');
 const cors = require('cors');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const catalogRoutes = require('./routes/catalog');
+const reviewsRoutes = require('./routes/reviews');
 const uploadRoutes = require('./routes/upload');
 const feedbackRoutes = require('./routes/feedback');
 const pairingRoutes = require('./routes/pairing');
@@ -40,6 +41,8 @@ app.get('/subscribe-cancel/', redirectPage('subscribe-cancel', false));
 
 // Shared cigar catalog (PostgreSQL)
 app.use('/api/catalog', catalogRoutes);
+// Shared community reviews
+app.use('/api/reviews', reviewsRoutes);
 // Image upload (Supabase Storage)
 app.use('/api/upload', uploadRoutes);
 // User feedback (emails to brannonglover@gmail.com)

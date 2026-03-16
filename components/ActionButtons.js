@@ -7,6 +7,7 @@ import ListIconFocused from './icons/ListIconFocused';
 import colors from '../theme/colors'
 import Favorites from '../pages/Favorites'
 import Dislikes from '../pages/Dislikes'
+import Search from '../pages/Search'
 import Pairing from '../pages/Pairing'
 import { SwipeableTabWrapper } from './SwipeableTabWrapper'
 
@@ -32,6 +33,14 @@ function SwipeableDislikes(props) {
   return (
     <SwipeableTabWrapper>
       <Dislikes {...props} />
+    </SwipeableTabWrapper>
+  )
+}
+
+function SwipeableSearch(props) {
+  return (
+    <SwipeableTabWrapper>
+      <Search {...props} />
     </SwipeableTabWrapper>
   )
 }
@@ -102,6 +111,17 @@ export function ActionButtons() {
               name="cigar-off"
               size={32}
               color={focused ? colors.dislike : colors.textSecondary}
+            />
+          </View>
+        )
+      }} />
+      <Tab.Screen name="Search" component={SwipeableSearch} options={{
+        tabBarIcon: ({ focused }) => (
+          <View style={{ alignItems: 'center', justifyContent: 'center', width: 32, height: 32 }}>
+            <MaterialCommunityIcons
+              name={focused ? 'magnify' : 'magnify'}
+              size={32}
+              color={focused ? colors.primary : colors.textSecondary}
             />
           </View>
         )

@@ -14,7 +14,7 @@ import {
   ActionSheetIOS,
   Linking,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, COLLECTIONS } from '../db';
@@ -48,6 +48,7 @@ const FREE_CIGAR_LIMIT = 5;
 
 export default function AddCigar() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { tier, supabase } = useAuth();
   const [showCustom, setShowCustom] = useState(false);
   const [cigarCount, setCigarCount] = useState(0);
@@ -140,6 +141,33 @@ export default function AddCigar() {
       console.error('Failed to load cigar catalog:', err);
     }
   }
+
+  // Prefill from Search (when navigating from catalog result)
+  const prefill = route.params?.prefillBrand && route.params?.prefillName && route.params?.prefillLength;
+  useEffect(() => {
+    if (!prefill || data.length === 0) return;
+    const { prefillBrand, prefillName, prefillLength } = route.params;
+    const match = data.find(
+      (c) =>
+        (c.brand || '').trim() === (prefillBrand || '').trim() &&
+        (c.name || '').trim() === (prefillName || '').trim() &&
+        (c.length || '').trim() === (prefillLength || '').trim()
+    );
+    if (match) {
+      setCigarBrand(match.brand || '');
+      setCigarName(match.name || '');
+      setCigarSize(match.length || '');
+      setCigarDescription(match.description || '');
+      setCigarWrapper(match.wrapper || '');
+      setCigarBinder(match.binder || '');
+      setCigarFiller(match.filler || '');
+      setCigarImage(match.image || '');
+      const byBrand = data.filter((c) => c.brand === match.brand);
+      setCigarNameArr([...new Set(byBrand.map((c) => c.name))].map((n) => ({ label: n, value: n })));
+      const byBrandName = data.filter((c) => c.brand === match.brand && c.name === match.name);
+      setCigarSizeArr(byBrandName.map((c) => ({ label: c.length, value: c.length })));
+    }
+  }, [prefill, data, route.params]);
 
   function fillCigarName(brand) {
     const byBrand = data.filter((c) => c.brand === brand);
