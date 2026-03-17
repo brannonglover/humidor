@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, ActivityIndicator, Image, StyleSheet, Linking } from 'react-native';
+import { Linking } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,24 +10,18 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthStack from './navigation/AuthStack';
 import { ClickOutsideProvider } from 'react-native-click-outside';
 import { initDatabase } from './db';
-import colors from './theme/colors';
+
+// Keep native splash visible until app is ready (avoids double loading screen)
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Show auth flow (landing, login, signup) when Supabase URL is set.
 // Anon key also required for sign up/login to work.
 const showAuthFlow = !!process.env.EXPO_PUBLIC_SUPABASE_URL;
 
-function LoadingScreen() {
-  return (
-    <View style={styles.loading}>
-      <Image source={require('./assets/logo-wd.png')} style={styles.loadingLogo} resizeMode="contain" />
-      <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
-    </View>
-  );
-}
-
 function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const { user, loading: authLoading } = useAuth();
+  const [hasHiddenSplash, setHasHiddenSplash] = useState(false);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -46,8 +41,17 @@ function AppContent() {
       });
   }, []);
 
-  if (!isReady) {
-    return <LoadingScreen />;
+  const showContent = isReady && (!showAuthFlow || !authLoading);
+  useEffect(() => {
+    if (showContent && !hasHiddenSplash) {
+      setHasHiddenSplash(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [showContent, hasHiddenSplash]);
+
+  // While loading, native splash stays visible (no need for custom LoadingScreen)
+  if (!isReady || (showAuthFlow && authLoading)) {
+    return null;
   }
 
   // No Supabase URL: skip auth, go straight to main app
@@ -57,11 +61,6 @@ function AppContent() {
         <ActionButtons />
       </NavigationContainer>
     );
-  }
-
-  // Auth loading: show spinner
-  if (authLoading) {
-    return <LoadingScreen />;
   }
 
   // Not logged in: show auth flow
@@ -170,22 +169,5 @@ function App() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.screenBg,
-  },
-  loadingLogo: {
-    height: 96,
-    width: 360,
-    marginBottom: 48,
-  },
-  spinner: {
-    marginTop: 24,
-  },
-});
 
 export default App;

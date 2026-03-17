@@ -72,49 +72,29 @@ export async function initDatabase() {
     // Catalog comes from API (PostgreSQL). Local table is cache/offline fallback.
     // Seed server: cd server && npm run init-catalog
 
-    // Add quantity column if missing (migration for existing DBs)
-    const tableInfo = await db.getAllAsync('PRAGMA table_info(cigars)');
-    const hasQuantity = tableInfo.some((col) => col.name === 'quantity');
-    if (!hasQuantity) {
+    // Migrations: add columns if missing (single PRAGMA call for all checks)
+    const cigarsCols = await db.getAllAsync('PRAGMA table_info(cigars)');
+    const cigarsColNames = new Set(cigarsCols.map((c) => c.name));
+
+    if (!cigarsColNames.has('quantity')) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1');
     }
-
-    // Add is_favorite column if missing (migration for existing DBs)
-    const tableInfo2 = await db.getAllAsync('PRAGMA table_info(cigars)');
-    const hasIsFavorite = tableInfo2.some((col) => col.name === 'is_favorite');
-    if (!hasIsFavorite) {
+    if (!cigarsColNames.has('is_favorite')) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
       await db.execAsync("UPDATE cigars SET is_favorite = 1 WHERE collection = 'likes'");
     }
-
-    // Add favorite notes columns if missing
-    const tableInfo3 = await db.getAllAsync('PRAGMA table_info(cigars)');
-    const colNames = new Set(tableInfo3.map((c) => c.name));
-    const noteCols = ['favorite_notes', 'flavor_profile', 'construction_quality', 'smoked_date', 'flavor_changes'];
-    for (const col of noteCols) {
-      if (!colNames.has(col)) {
+    for (const col of ['favorite_notes', 'flavor_profile', 'construction_quality', 'smoked_date', 'flavor_changes']) {
+      if (!cigarsColNames.has(col)) {
         await db.execAsync(`ALTER TABLE cigars ADD COLUMN ${col} TEXT`);
       }
     }
-
-    // Add strength_profile column if missing (JSON: { thirds: [{ strength, flavors }] })
-    const tableInfo4 = await db.getAllAsync('PRAGMA table_info(cigars)');
-    const hasStrengthProfile = tableInfo4.some((c) => c.name === 'strength_profile');
-    if (!hasStrengthProfile) {
+    if (!cigarsColNames.has('strength_profile')) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN strength_profile TEXT');
     }
-
-    // Add date_added column if missing (ISO date YYYY-MM-DD when cigar entered cavaro)
-    const tableInfo5 = await db.getAllAsync('PRAGMA table_info(cigars)');
-    const hasDateAdded = tableInfo5.some((c) => c.name === 'date_added');
-    if (!hasDateAdded) {
+    if (!cigarsColNames.has('date_added')) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN date_added TEXT');
     }
-
-    // Add line column if missing (sub-brand / series, e.g. Black Market)
-    const tableInfo6 = await db.getAllAsync('PRAGMA table_info(cigars)');
-    const hasLine = tableInfo6.some((c) => c.name === 'line');
-    if (!hasLine) {
+    if (!cigarsColNames.has('line')) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN line TEXT');
     }
 
