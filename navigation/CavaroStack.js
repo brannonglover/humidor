@@ -1,12 +1,12 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Humidor from '../pages/Humidor';
+import Cavaro from '../pages/Cavaro';
 import AddCigar from '../pages/AddCigar';
 import EditCigar from '../pages/EditCigar';
 import colors from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
 
-export default function HumidorStack() {
+export default function CavaroStack() {
   return (
     <Stack.Navigator
       screenOptions={{
@@ -14,7 +14,7 @@ export default function HumidorStack() {
         contentStyle: { backgroundColor: colors.screenBg },
       }}
     >
-      <Stack.Screen name="HumidorList" component={Humidor} />
+      <Stack.Screen name="CavaroList" component={Cavaro} />
       <Stack.Screen name="AddCigar" component={AddCigar} />
       <Stack.Screen name="EditCigar" component={EditCigar} />
     </Stack.Navigator>

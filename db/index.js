@@ -1,7 +1,7 @@
 /**
  * Centralized database module for Cavaro app.
  * Uses a single `cigars` table with a `collection` column instead of
- * three separate tables (humidor, likes, dislikes).
+ * three separate tables (cavaro, likes, dislikes).
  * cigar_catalog: local cache/fallback when API is unavailable (see api/catalog.js).
  * Primary catalog source is PostgreSQL via API.
  */
@@ -11,7 +11,7 @@ const DB_NAME = 'cigars.db';
 export const db = SQLite.openDatabaseSync(DB_NAME);
 
 const COLLECTIONS = {
-  HUMIDOR: 'humidor',
+  CAVARO: 'cavaro',
   LIKES: 'likes',
   DISLIKES: 'dislikes',
 };
@@ -62,7 +62,7 @@ export async function initDatabase() {
         length TEXT,
         image TEXT,
         quantity INTEGER NOT NULL DEFAULT 1,
-        collection TEXT NOT NULL DEFAULT 'humidor' CHECK(collection IN ('humidor', 'likes', 'dislikes'))
+        collection TEXT NOT NULL DEFAULT 'cavaro' CHECK(collection IN ('cavaro', 'likes', 'dislikes'))
       )
     `);
     await db.execAsync(`
@@ -104,7 +104,7 @@ export async function initDatabase() {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN strength_profile TEXT');
     }
 
-    // Add date_added column if missing (ISO date YYYY-MM-DD when cigar entered humidor)
+    // Add date_added column if missing (ISO date YYYY-MM-DD when cigar entered cavaro)
     const tableInfo5 = await db.getAllAsync('PRAGMA table_info(cigars)');
     const hasDateAdded = tableInfo5.some((c) => c.name === 'date_added');
     if (!hasDateAdded) {
@@ -116,6 +116,44 @@ export async function initDatabase() {
     const hasLine = tableInfo6.some((c) => c.name === 'line');
     if (!hasLine) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN line TEXT');
+    }
+
+    // Migration: humidor -> cavaro collection (recreate table to update CHECK constraint)
+    const cigarsSchema = await db.getFirstAsync("SELECT sql FROM sqlite_master WHERE type='table' AND name='cigars'");
+    if (cigarsSchema?.sql?.includes("'humidor'")) {
+      await db.execAsync(`
+        CREATE TABLE cigars_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          brand TEXT,
+          name TEXT,
+          description TEXT,
+          wrapper TEXT,
+          binder TEXT,
+          filler TEXT,
+          length TEXT,
+          image TEXT,
+          quantity INTEGER NOT NULL DEFAULT 1,
+          collection TEXT NOT NULL DEFAULT 'cavaro' CHECK(collection IN ('cavaro', 'likes', 'dislikes')),
+          is_favorite INTEGER NOT NULL DEFAULT 0,
+          favorite_notes TEXT,
+          flavor_profile TEXT,
+          construction_quality TEXT,
+          smoked_date TEXT,
+          flavor_changes TEXT,
+          strength_profile TEXT,
+          date_added TEXT,
+          line TEXT
+        )
+      `);
+      await db.execAsync(`
+        INSERT INTO cigars_new SELECT id, brand, name, description, wrapper, binder, filler, length, image, quantity,
+          CASE WHEN collection='humidor' THEN 'cavaro' ELSE collection END,
+          COALESCE(is_favorite, 0), favorite_notes, flavor_profile, construction_quality, smoked_date, flavor_changes, strength_profile, date_added, line
+        FROM cigars
+      `);
+      await db.execAsync('DROP TABLE cigars');
+      await db.execAsync('ALTER TABLE cigars_new RENAME TO cigars');
+      await db.execAsync('CREATE INDEX IF NOT EXISTS idx_cigars_collection ON cigars(collection)');
     }
 
     // Create smoke_history table (tracks when each cigar was smoked, for quantity > 1)
@@ -141,7 +179,7 @@ export async function initDatabase() {
       // Migrate data from old tables to new unified table
       await db.execAsync(`
         INSERT INTO cigars (brand, name, description, wrapper, binder, filler, length, image, collection)
-        SELECT brand, name, description, wrapper, binder, filler, length, image, 'humidor' FROM humidor
+        SELECT brand, name, description, wrapper, binder, filler, length, image, 'cavaro' FROM humidor
       `);
       await db.execAsync(`
         INSERT INTO cigars (brand, name, description, wrapper, binder, filler, length, image, collection)
@@ -208,7 +246,7 @@ export async function getTopReviewedCigars(limit = 5) {
       (CASE WHEN c.flavor_changes IS NOT NULL AND c.flavor_changes != '' THEN 1 ELSE 0 END) +
       COALESCE((SELECT COUNT(*) FROM smoke_history sh WHERE sh.cigar_id = c.id), 0) AS review_score
     FROM cigars c
-    WHERE (c.collection = 'likes' OR (c.collection = 'humidor' AND c.is_favorite = 1))
+    WHERE (c.collection = 'likes' OR (c.collection = 'cavaro' AND c.is_favorite = 1))
       AND (
         (c.favorite_notes IS NOT NULL AND c.favorite_notes != '')
         OR (c.flavor_profile IS NOT NULL AND c.flavor_profile != '')

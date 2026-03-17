@@ -1,6 +1,6 @@
 {
-  "name": "humidor",
-  "version": "1.0.0",
+  "name": "cavaro",
+  "version": "1.3.1",
   "main": "index.js",
   "scripts": {
     "start": "expo start",

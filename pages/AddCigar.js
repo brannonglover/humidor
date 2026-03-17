@@ -98,7 +98,7 @@ export default function AddCigar() {
     React.useCallback(() => {
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
       if (enforceLimit) {
-        db.getFirstAsync("SELECT COUNT(*) as n FROM cigars WHERE collection = 'humidor'")
+        db.getFirstAsync("SELECT COUNT(*) as n FROM cigars WHERE collection = 'cavaro'")
           .then((r) => setCigarCount(r?.n ?? 0));
       }
     }, [enforceLimit])
@@ -319,7 +319,7 @@ export default function AddCigar() {
         cigarSize.trim(),
         imageUrl,
         qty,
-        COLLECTIONS.HUMIDOR,
+        COLLECTIONS.CAVARO,
         dateToUse
       );
       navigation.goBack();
@@ -383,7 +383,7 @@ export default function AddCigar() {
         customSize.trim(),
         imageUrl,
         qty,
-        COLLECTIONS.HUMIDOR,
+        COLLECTIONS.CAVARO,
         dateToUse
       );
       navigation.goBack();

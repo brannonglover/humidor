@@ -36,7 +36,7 @@ function filterCatalogByTaste(catalog, keywords) {
   });
 }
 
-function SearchCigarCard({ cigar, expanded, onToggleExpand, onAddToHumidor, showRating }) {
+function SearchCigarCard({ cigar, expanded, onToggleExpand, onAddToCavaro, showRating }) {
   return (
     <View style={styles.card}>
       <Pressable onPress={onToggleExpand}>
@@ -93,10 +93,10 @@ function SearchCigarCard({ cigar, expanded, onToggleExpand, onAddToHumidor, show
           </View>
           <Pressable
             style={styles.addBtn}
-            onPress={() => onAddToHumidor(cigar)}
+            onPress={() => onAddToCavaro(cigar)}
           >
             <MaterialCommunityIcons name="plus" size={20} color={colors.screenBg} />
-            <Text style={styles.addBtnText}>Add to humidor</Text>
+            <Text style={styles.addBtnText}>Add to Cavaro</Text>
           </Pressable>
         </View>
       )}
@@ -213,7 +213,7 @@ export default function Search({ navigation }) {
   const [expandedCardKey, setExpandedCardKey] = useState(null);
   const [topSectionExpanded, setTopSectionExpanded] = useState(false);
 
-  const handleAddToHumidor = (cigar) => {
+  const handleAddToCavaro = (cigar) => {
     navigation.navigate('Cavaro', {
       screen: 'AddCigar',
       params: { prefillBrand: cigar.brand, prefillName: cigar.name, prefillLength: cigar.length },
@@ -317,7 +317,7 @@ export default function Search({ navigation }) {
                         prev === getCardKey(c) ? null : getCardKey(c)
                       )
                     }
-                    onAddToHumidor={handleAddToHumidor}
+                    onAddToCavaro={handleAddToCavaro}
                   />
                 ))
               )}
@@ -371,7 +371,7 @@ export default function Search({ navigation }) {
                         prev === getSearchCardKey(c) ? null : getSearchCardKey(c)
                       )
                     }
-                    onAddToHumidor={handleAddToHumidor}
+                    onAddToCavaro={handleAddToCavaro}
                   />
                 ))
               )}

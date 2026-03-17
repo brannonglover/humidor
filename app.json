@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.brannonglover.humidor"
+      "bundleIdentifier": "com.brannonglover.cavaro",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +28,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.brannonglover.humidor"
+      "package": "com.brannonglover.cavaro"
     },
     "web": {
       "favicon": "./assets/favicon.png"

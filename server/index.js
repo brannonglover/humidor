@@ -23,7 +23,7 @@ app.use(cors());
 
 // Stripe Checkout redirect: browser can't open custom schemes directly, so we land on HTTPS first
 // then redirect to the app. Must be served from same origin as API.
-const APP_SCHEME = 'com.brannonglover.humidor';
+const APP_SCHEME = 'com.brannonglover.cavaro';
 function redirectPage(path, hasSessionId = false) {
   return (req, res) => {
     const sessionId = req.query.session_id || '';

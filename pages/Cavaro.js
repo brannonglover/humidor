@@ -7,8 +7,8 @@ import FeedbackBtn from '../components/FeedbackBtn';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
-function Humidor({ navigation }) {
-  const view = 'humidor';
+function Cavaro({ navigation }) {
+  const view = 'cavaro';
   const { user, supabase } = useAuth();
 
   return (
@@ -41,7 +41,7 @@ function Humidor({ navigation }) {
   );
 }
 
-export default Humidor;
+export default Cavaro;
 
 const styles = StyleSheet.create({
   screen: {

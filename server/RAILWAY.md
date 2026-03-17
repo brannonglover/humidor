@@ -4,7 +4,7 @@
 
 1. Go to [railway.app](https://railway.app) and sign in (GitHub recommended).
 2. Click **New Project** → **Deploy from GitHub repo**.
-3. Select your `humidor` repo.
+3. Select your `cavaro` repo.
 4. Railway will detect the project. Set **Root Directory** to `server` (so it deploys only the API, not the whole app).
 
 ## 2. Configure environment variables
@@ -55,7 +55,7 @@ Use two Railway services in the same project:
    - `STRIPE_SECRET_KEY` = `sk_test_...`
    - `STRIPE_PRICE_ID` = test price ID (from Stripe Dashboard, Test mode)
    - `STRIPE_WEBHOOK_SECRET` = from webhook for this staging URL (see below)
-4. Deploy and copy the staging URL (e.g. `https://humidor-staging-xxxx.up.railway.app`).
+4. Deploy and copy the staging URL (e.g. `https://cavaro-staging-xxxx.up.railway.app`).
 5. In [Stripe Dashboard → Webhooks](https://dashboard.stripe.com/webhooks), switch to **Test mode** (top right), add endpoint:
    - **URL:** `https://YOUR-STAGING-URL/api/subscription/webhook`
    - **Events:** `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`

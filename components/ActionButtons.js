@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import HumidorStack from '../navigation/HumidorStack'
+import CavaroStack from '../navigation/CavaroStack'
 import ListIconDefault from './icons/ListIconDefault';
 import ListIconFocused from './icons/ListIconFocused';
 import colors from '../theme/colors'
@@ -13,10 +13,10 @@ import { SwipeableTabWrapper } from './SwipeableTabWrapper'
 
 const Tab = createBottomTabNavigator()
 
-function SwipeableHumidor(props) {
+function SwipeableCavaro(props) {
   return (
     <SwipeableTabWrapper>
-      <HumidorStack {...props} />
+      <CavaroStack {...props} />
     </SwipeableTabWrapper>
   )
 }
@@ -80,7 +80,7 @@ export function ActionButtons() {
     >
       <Tab.Screen
         name="Cavaro"
-        component={SwipeableHumidor}
+        component={SwipeableCavaro}
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center', width: 32, height: 32 }}>

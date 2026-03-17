@@ -387,8 +387,10 @@ export default function CigarList({ view, onEditCigar }) {
         rows = await db.getAllAsync(
           "SELECT * FROM cigars WHERE collection = ? OR (collection = ? AND is_favorite = 1)",
           COLLECTIONS.LIKES,
-          COLLECTIONS.HUMIDOR
+          COLLECTIONS.CAVARO
         );
+      } else if (view === COLLECTIONS.CAVARO) {
+        rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ? AND quantity > 0', view);
       } else {
         rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ?', view);
       }
@@ -438,9 +440,9 @@ export default function CigarList({ view, onEditCigar }) {
     try {
       if (favoriteModalMode === 'add') {
         const quantity = Math.max(0, parseInt(favoriteModalCigar.quantity, 10) || 1);
-        const isFromHumidor = view === COLLECTIONS.HUMIDOR;
-        const shouldLeaveHumidor = isFromHumidor && quantity < 2;
-        if (shouldLeaveHumidor) {
+        const isFromCavaro = view === COLLECTIONS.CAVARO;
+        const shouldLeaveCavaro = isFromCavaro && quantity < 2;
+        if (shouldLeaveCavaro) {
           await db.runAsync(
             `UPDATE cigars SET collection = ?, is_favorite = 1, favorite_notes = ?, flavor_profile = ?, construction_quality = ?, smoked_date = ?, flavor_changes = ? WHERE id = ?`,
             COLLECTIONS.LIKES,
@@ -555,7 +557,7 @@ export default function CigarList({ view, onEditCigar }) {
     try {
       await db.runAsync(
         'UPDATE cigars SET collection = ?, is_favorite = 0 WHERE id = ?',
-        COLLECTIONS.HUMIDOR,
+        COLLECTIONS.CAVARO,
         id
       );
       refreshList();
@@ -587,8 +589,10 @@ export default function CigarList({ view, onEditCigar }) {
             rows = await db.getAllAsync(
               "SELECT * FROM cigars WHERE collection = ? OR (collection = ? AND is_favorite = 1)",
               COLLECTIONS.LIKES,
-              COLLECTIONS.HUMIDOR
+              COLLECTIONS.CAVARO
             );
+          } else if (view === COLLECTIONS.CAVARO) {
+            rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ? AND quantity > 0', view);
           } else {
             rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ?', view);
           }
@@ -667,7 +671,7 @@ export default function CigarList({ view, onEditCigar }) {
               </View>
             </View>
             <View style={styles.cigarHeaderRight}>
-              {view === 'humidor' && (cigar.quantity ?? 1) > 0 ? (
+              {view === 'cavaro' && (cigar.quantity ?? 1) > 0 ? (
                 <View style={styles.quantityBadge}>
                   <Text style={styles.quantityText}>{cigar.quantity ?? 1}</Text>
                 </View>
@@ -690,7 +694,7 @@ export default function CigarList({ view, onEditCigar }) {
             isExpanded={show && detailsKey === cigarNum}
             cigar={cigar}
           />
-          {(view === 'humidor' || view === 'likes' || view === 'dislikes') && (
+          {(view === 'cavaro' || view === 'likes' || view === 'dislikes') && (
             <ExpandableFavoriteNotes
               isExpanded={expandedNotes === cigar.id}
               cigar={cigar}
@@ -719,7 +723,7 @@ export default function CigarList({ view, onEditCigar }) {
               }}
             />
           )}
-          {(view === 'humidor' || view === 'likes') && (
+          {(view === 'cavaro' || view === 'likes') && (
             <View style={styles.actionIcons}>
               <View style={styles.notesIconBtn}>
                 <Pressable
@@ -757,7 +761,7 @@ export default function CigarList({ view, onEditCigar }) {
                 />
               </View>
               <View style={styles.rightActionIcons}>
-                {view === 'humidor' && (cigar.quantity ?? 1) > 1 && (
+                {view === 'cavaro' && (cigar.quantity ?? 1) > 0 && (
                   <Pressable
                     onPress={(e) => {
                       e.stopPropagation();
@@ -788,7 +792,7 @@ export default function CigarList({ view, onEditCigar }) {
                     color={(cigar.is_favorite ?? 0) ? colors.primary : colors.textSecondary}
                   />
                 </Pressable>
-                {view === 'humidor' && (
+                {view === 'cavaro' && (
                   <Pressable
                     onPress={(e) => {
                       e.stopPropagation();
@@ -917,11 +921,11 @@ export default function CigarList({ view, onEditCigar }) {
   };
 
   const renderEmptyComponent = () => {
-    if (view === COLLECTIONS.HUMIDOR) {
+    if (view === COLLECTIONS.CAVARO) {
       return (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            A humidor without cigars is just a fancy box. Time to fill it up.
+            Cavaro without cigars is just a fancy box. Time to fill it up.
           </Text>
         </View>
       );
