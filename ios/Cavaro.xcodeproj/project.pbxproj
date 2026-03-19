@@ -389,6 +389,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Cavaro/Cavaro.entitlements;
 				CURRENT_PROJECT_VERSION = 22;
+				DEVELOPMENT_TEAM = 8NQ9435B38;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -430,6 +431,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Cavaro/Cavaro.entitlements;
 				CURRENT_PROJECT_VERSION = 22;
+				DEVELOPMENT_TEAM = 8NQ9435B38;
 				INFOPLIST_FILE = Cavaro/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
