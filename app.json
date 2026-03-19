@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/logo-wd.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a1512"
     },
     "ios": {
       "supportsTablet": true,
@@ -34,6 +34,17 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo-wd.png",
+          "backgroundColor": "#1a1512",
+          "resizeMode": "contain",
+          "imageWidth": 200,
+          "ios": { "fadeDurationMs": 500 },
+          "android": { "fadeDurationMs": 500 }
+        }
+      ],
       "expo-sqlite",
       [
         "expo-image-picker",

@@ -14,10 +14,11 @@ import {
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 
-export default function Signup({ supabase, tier, onSuccess, onBack }) {
+export default function Signup({ supabase, tier, onSuccess, onBack, onGoToLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkEmailFor, setCheckEmailFor] = useState(null);
 
   const handleSignup = async () => {
     const e = email.trim();
@@ -36,16 +37,50 @@ export default function Signup({ supabase, tier, onSuccess, onBack }) {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email: e, password: p });
+      const { data, error } = await supabase.auth.signUp(
+        { email: e, password: p },
+        {
+          emailRedirectTo: 'cavaro://auth/callback',
+        }
+      );
       if (error) throw error;
-      // Create user profile with tier on backend (handled by webhook or first tier fetch)
-      onSuccess?.();
+      if (data.session) {
+        // User is immediately logged in (email confirmation disabled)
+        onSuccess?.();
+      } else {
+        // Email confirmation required – show check-your-email screen
+        setCheckEmailFor(e);
+      }
     } catch (err) {
       Alert.alert('Sign up failed', err.message || 'Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (checkEmailFor) {
+    return (
+      <View style={styles.screen}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.container}>
+            <Text style={styles.title}>Check your email</Text>
+            <Text style={styles.subtitle}>
+              We sent a confirmation link to {checkEmailFor}. Click the link to verify your account, then come back to sign in.
+            </Text>
+            <Pressable
+              style={styles.button}
+              onPress={() => {
+                setCheckEmailFor(null);
+                (onGoToLogin ?? onBack)?.();
+              }}
+            >
+              <Text style={styles.buttonText}>Go to sign in</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

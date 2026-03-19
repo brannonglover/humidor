@@ -201,6 +201,92 @@ router.post('/confirm-session', async (req, res) => {
 });
 
 /**
+ * POST /api/subscription/restore
+ * Restore subscription for users who reinstalled the app but still have an active Stripe subscription.
+ * Links by email when no stripe_customer_id, or re-checks Stripe when tier is out of sync.
+ * Returns { tier: 'free' | 'premium', restored: boolean }
+ */
+router.post('/restore', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token || !supabase || !stripe) {
+    return res.status(503).json({ error: 'Subscription not configured' });
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    await pool.query(
+      `INSERT INTO user_profiles (id, tier, updated_at)
+       VALUES ($1, 'free', NOW())
+       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()`,
+      [user.id]
+    );
+
+    const { rows } = await pool.query(
+      'SELECT tier, stripe_customer_id FROM user_profiles WHERE id = $1',
+      [user.id]
+    );
+    let tier = rows[0]?.tier === 'premium' ? 'premium' : 'free';
+    const customerId = rows[0]?.stripe_customer_id;
+    let restored = false;
+
+    if (tier === 'premium') {
+      return res.json({ tier: 'premium', restored: false });
+    }
+
+    // Case 1: No stripe_customer_id - try to link by email (e.g. reinstalled, different auth provider)
+    if (!customerId && user.email) {
+      const { data: customers } = await stripe.customers.list({
+        email: user.email.trim(),
+        limit: 1,
+      });
+      const customer = customers[0];
+      if (customer) {
+        const { data: subs } = await stripe.subscriptions.list({
+          customer: customer.id,
+          status: 'active',
+          limit: 1,
+        });
+        if (subs.length > 0) {
+          await pool.query(
+            "UPDATE user_profiles SET stripe_customer_id = $1, tier = 'premium', updated_at = NOW() WHERE id = $2",
+            [customer.id, user.id]
+          );
+          tier = 'premium';
+          restored = true;
+        }
+      }
+    }
+
+    // Case 2: Has stripe_customer_id but tier is free - re-check Stripe (e.g. resubscribed, sync issue)
+    if (tier === 'free' && customerId) {
+      const { data: subs } = await stripe.subscriptions.list({
+        customer: customerId,
+        status: 'active',
+        limit: 1,
+      });
+      if (subs.length > 0) {
+        await pool.query(
+          "UPDATE user_profiles SET tier = 'premium', updated_at = NOW() WHERE id = $1",
+          [user.id]
+        );
+        tier = 'premium';
+        restored = true;
+      }
+    }
+
+    return res.json({ tier, restored });
+  } catch (err) {
+    console.error('Restore subscription error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to restore subscription' });
+  }
+});
+
+/**
  * Webhook handler - must be used with express.raw() for body (see index.js)
  */
 async function handleWebhook(req, res) {

@@ -31,15 +31,17 @@ export default function AuthStack({ onAuthenticated }) {
               navigation.navigate('Signup');
             }}
             onAlreadyHaveAccount={() => navigation.navigate('Login')}
+            onRestoreSubscription={() => navigation.navigate('Login', { restoreAfterSignIn: true })}
           />
         )}
       </Stack.Screen>
       <Stack.Screen name="Login">
-        {({ navigation }) => (
+        {({ navigation, route }) => (
           <Login
             supabase={supabase}
             onSuccess={onAuthenticated}
             onBack={() => navigation.goBack()}
+            restoreAfterSignIn={route.params?.restoreAfterSignIn}
           />
         )}
       </Stack.Screen>
@@ -50,6 +52,7 @@ export default function AuthStack({ onAuthenticated }) {
             tier={signupTier}
             onSuccess={onAuthenticated}
             onBack={() => navigation.goBack()}
+            onGoToLogin={() => navigation.navigate('Login')}
           />
         )}
       </Stack.Screen>

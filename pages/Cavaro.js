@@ -17,7 +17,11 @@ function Cavaro({ navigation }) {
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Image source={require('../assets/logo-wo.png')} style={styles.logo} resizeMode="contain" />
+              <Image
+                source={require('../assets/logo-wo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
               <Text style={styles.subtitle}>Your collection</Text>
             </View>
             <View style={styles.headerRight}>

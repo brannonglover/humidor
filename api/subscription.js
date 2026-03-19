@@ -93,6 +93,27 @@ export async function subscribeOrManage(accessToken, tier, successUrl, cancelUrl
 }
 
 /**
+ * Restore subscription for users who reinstalled the app but still have an active Stripe subscription.
+ * Returns { tier: 'free' | 'premium', restored: boolean }.
+ */
+export async function restoreSubscription(accessToken) {
+  const res = await fetch(`${API_BASE_URL}/api/subscription/restore`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to restore subscription');
+  }
+  return { tier: data.tier === 'premium' ? 'premium' : 'free', restored: !!data.restored };
+}
+
+/**
  * Create Stripe Customer Portal session for managing subscription.
  * Returns portal URL or throws if no active subscription.
  */

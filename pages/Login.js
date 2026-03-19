@@ -13,8 +13,11 @@ import {
 } from 'react-native';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
+import { restoreSubscription } from '../api/subscription';
+import { useAuth } from '../context/AuthContext';
 
-export default function Login({ supabase, onSuccess, onBack }) {
+export default function Login({ supabase, onSuccess, onBack, restoreAfterSignIn }) {
+  const { refreshTier } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,6 +37,20 @@ export default function Login({ supabase, onSuccess, onBack }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: e, password: p });
       if (error) throw error;
+      if (restoreAfterSignIn) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          try {
+            const { restored } = await restoreSubscription(session.access_token);
+            refreshTier?.();
+            if (restored) {
+              Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
+            }
+          } catch (err) {
+            Alert.alert('Restore failed', err.message || 'Could not restore subscription.');
+          }
+        }
+      }
       onSuccess?.();
     } catch (err) {
       Alert.alert('Sign in failed', err.message || 'Please check your credentials.');

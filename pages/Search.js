@@ -16,7 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { searchReviewsByTaste, getTopReviewedCigars } from '../api/reviews';
 import { fetchCatalog } from '../api/catalog';
-import { subscribeOrManage, createPortalSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
 import { db } from '../db';
 import { COMMON_FLAVORS } from '../components/StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
@@ -201,6 +201,28 @@ export default function Search({ navigation }) {
     }
   };
 
+  const handleRestorePress = async () => {
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      Alert.alert('Sign in required', 'Please sign in to restore your subscription.');
+      return;
+    }
+    try {
+      const { tier: newTier, restored } = await restoreSubscription(session.access_token);
+      refreshTier?.();
+      if (restored) {
+        Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
+      } else if (newTier === 'premium') {
+        Alert.alert('Already active', 'Your subscription is already active.');
+      } else {
+        Alert.alert('No subscription found', 'We couldn\'t find an active subscription for this account.');
+      }
+    } catch (err) {
+      Alert.alert('Restore failed', err.message || 'Could not restore subscription.');
+    }
+  };
+
   const toggleFlavor = (flavor) => {
     setSelectedFlavors((prev) =>
       prev.includes(flavor) ? prev.filter((f) => f !== flavor) : [...prev, flavor]
@@ -330,14 +352,17 @@ export default function Search({ navigation }) {
                 <View>
                   <Text style={styles.sectionTitle}>Top 5 from community reviews</Text>
                   <Text style={styles.topSectionSubtitle}>
-                    Upgrade to premium to see highest-rated cigars
+                    Subscribe to Premium for $4.99/mo to see highest-rated cigars
                   </Text>
                 </View>
                 <MaterialCommunityIcons name="lock" size={24} color={colors.textMuted} />
               </View>
               <Pressable style={styles.upgradeCard} onPress={handleUpgradePress}>
-                <Text style={styles.upgradeCardText}>Upgrade to see top cigars</Text>
+                <Text style={styles.upgradeCardText}>Subscribe for $4.99/mo to see top cigars</Text>
                 <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+              </Pressable>
+              <Pressable style={styles.restoreLink} onPress={handleRestorePress}>
+                <Text style={styles.restoreLinkText}>Already have a subscription? Restore it</Text>
               </Pressable>
             </View>
           )}
@@ -350,10 +375,13 @@ export default function Search({ navigation }) {
               ) : searchLimitReached ? (
                 <View style={styles.limitReachedWrap}>
                   <Text style={styles.limitReachedText}>
-                    Free users get 3 searches per day. Upgrade for unlimited searches.
+                    Free users get 3 searches per day. Subscribe for $4.99/mo for unlimited searches.
                   </Text>
                   <Pressable style={styles.upgradeBtn} onPress={handleUpgradePress}>
-                    <Text style={styles.upgradeBtnText}>Upgrade to premium</Text>
+                    <Text style={styles.upgradeBtnText}>Subscribe for $4.99/mo</Text>
+                  </Pressable>
+                  <Pressable style={styles.restoreLink} onPress={handleRestorePress}>
+                    <Text style={styles.restoreLinkText}>Restore subscription</Text>
                   </Pressable>
                 </View>
               ) : searchSignInRequired ? (
@@ -677,5 +705,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.screenBg,
+  },
+  restoreLink: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  restoreLinkText: {
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: '500',
   },
 });

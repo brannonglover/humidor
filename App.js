@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Linking } from 'react-native';
+import { Linking, View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,8 +11,10 @@ import AuthStack from './navigation/AuthStack';
 import { ClickOutsideProvider } from 'react-native-click-outside';
 import { initDatabase } from './db';
 
-// Keep native splash visible until app is ready (avoids double loading screen)
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const FADE_DURATION = 500;
+SplashScreen.setOptions({ fade: true, duration: FADE_DURATION });
 
 // Show auth flow (landing, login, signup) when Supabase URL is set.
 // Anon key also required for sign up/login to work.
@@ -21,7 +23,6 @@ const showAuthFlow = !!process.env.EXPO_PUBLIC_SUPABASE_URL;
 function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const { user, loading: authLoading } = useAuth();
-  const [hasHiddenSplash, setHasHiddenSplash] = useState(false);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -41,46 +42,68 @@ function AppContent() {
       });
   }, []);
 
-  const showContent = isReady && (!showAuthFlow || !authLoading);
+  const isLoading = !isReady || (showAuthFlow && authLoading);
+
+  // Keep splash visible until app is ready, then fade to reveal main app (single transition)
   useEffect(() => {
-    if (showContent && !hasHiddenSplash) {
-      setHasHiddenSplash(true);
+    if (!isLoading) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [showContent, hasHiddenSplash]);
+  }, [isLoading]);
 
-  // While loading, native splash stays visible (no need for custom LoadingScreen)
-  if (!isReady || (showAuthFlow && authLoading)) {
+  const renderAppContent = () => {
+    if (!showAuthFlow) {
+      return (
+        <View style={styles.appRoot}>
+          <NavigationContainer>
+            <ActionButtons />
+          </NavigationContainer>
+        </View>
+      );
+    }
+    if (!user) {
+      return (
+        <NavigationContainer>
+          <AuthStack onAuthenticated={() => {}} />
+        </NavigationContainer>
+      );
+    }
+    return (
+      <View style={styles.appRoot}>
+        <NavigationContainer>
+          <ActionButtons />
+        </NavigationContainer>
+      </View>
+    );
+  };
+
+  if (isLoading) {
     return null;
   }
 
-  // No Supabase URL: skip auth, go straight to main app
-  if (!showAuthFlow) {
-    return (
-      <NavigationContainer>
-        <ActionButtons />
-      </NavigationContainer>
-    );
-  }
-
-  // Not logged in: show auth flow
-  if (!user) {
-    return (
-      <NavigationContainer>
-        <AuthStack onAuthenticated={() => {}} />
-      </NavigationContainer>
-    );
-  }
-
-  // Logged in: main app
-  return (
-    <NavigationContainer>
-      <ActionButtons />
-    </NavigationContainer>
-  );
+  return <View style={styles.appRoot}>{renderAppContent()}</View>;
 }
 
+const styles = StyleSheet.create({
+  appRoot: {
+    flex: 1,
+  },
+});
+
 const PENDING_SESSION_MAX_RETRIES = 10;
+
+function createSessionFromAuthUrl(url, supabase) {
+  const hashIndex = url.indexOf('#');
+  const hash = hashIndex >= 0 ? url.substring(hashIndex + 1) : '';
+  const params = new URLSearchParams(hash);
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
+  if (!access_token || !supabase) return null;
+  return supabase.auth.setSession({
+    access_token,
+    refresh_token: refresh_token || '',
+  });
+}
 
 function SubscriptionDeepLinkHandler() {
   const { refreshTier, setTierFromSubscription, user, supabase } = useAuth();
@@ -102,8 +125,18 @@ function SubscriptionDeepLinkHandler() {
       }
     };
 
-    const handleReturnFromCheckout = async (url) => {
-      if (!url?.includes('subscribe-success')) return;
+    const handleIncomingUrl = async (url) => {
+      if (!url) return;
+      // Auth callback from email confirmation (cavaro://auth/callback#access_token=...)
+      if (url.includes('access_token') && supabase) {
+        try {
+          await createSessionFromAuthUrl(url, supabase);
+        } catch (e) {
+          console.warn('Auth callback error:', e);
+        }
+        return;
+      }
+      if (!url.includes('subscribe-success')) return;
       const encoded = url.match(/session_id=([^&]+)/)?.[1];
       const sessionId = encoded ? decodeURIComponent(encoded) : null;
       if (!sessionId) {
@@ -124,9 +157,9 @@ function SubscriptionDeepLinkHandler() {
       }
     };
 
-    const handleUrl = ({ url }) => handleReturnFromCheckout(url);
+    const handleUrl = ({ url }) => handleIncomingUrl(url);
     const sub = Linking.addEventListener('url', handleUrl);
-    Linking.getInitialURL().then(handleReturnFromCheckout);
+    Linking.getInitialURL().then(handleIncomingUrl);
     return () => sub.remove();
   }, [refreshTier, setTierFromSubscription, user, supabase]);
 

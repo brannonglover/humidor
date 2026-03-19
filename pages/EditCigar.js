@@ -18,7 +18,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db } from '../db';
 import { useAuth } from '../context/AuthContext';
-import { subscribeOrManage, createPortalSession } from '../api/subscription';
+import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
 import { uploadCigarImage } from '../api/upload';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
@@ -35,7 +35,7 @@ export default function EditCigar() {
   const navigation = useNavigation();
   const route = useRoute();
   const cigar = route.params?.cigar;
-  const { tier, supabase } = useAuth();
+  const { tier, supabase, refreshTier } = useAuth();
 
   const [brand, setBrand] = useState(cigar?.brand ?? '');
   const [name, setName] = useState(cigar?.name ?? '');
@@ -68,6 +68,24 @@ export default function EditCigar() {
         }
         Alert.alert('Upgrade to Premium', 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.', [
           { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Restore subscription',
+            onPress: async () => {
+              try {
+                const { tier: newTier, restored } = await restoreSubscription(session.access_token);
+                refreshTier?.();
+                if (restored) {
+                  Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
+                } else if (newTier === 'premium') {
+                  Alert.alert('Already active', 'Your subscription is already active.');
+                } else {
+                  Alert.alert('No subscription found', 'We couldn\'t find an active subscription for this account.');
+                }
+              } catch (e) {
+                Alert.alert('Restore failed', e.message || 'Could not restore subscription.');
+              }
+            },
+          },
           {
             text: 'Subscribe',
             onPress: async () => {

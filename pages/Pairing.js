@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
-import { subscribeOrManage, createPortalSession, getSubscriptionStatus } from '../api/subscription';
+import { subscribeOrManage, createPortalSession, getSubscriptionStatus, restoreSubscription } from '../api/subscription';
 import { API_BASE_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
@@ -36,6 +36,7 @@ function Pairing() {
   const [pairing, setPairing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
 
   const handleSubscribe = async () => {
     if (!supabase) {
@@ -107,6 +108,31 @@ function Pairing() {
     }
   };
 
+  const handleRestoreSubscription = async () => {
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      Alert.alert('Sign in required', 'Please sign in to restore your subscription.');
+      return;
+    }
+    setRestoreLoading(true);
+    try {
+      const { tier, restored } = await restoreSubscription(session.access_token);
+      refreshTier?.();
+      if (restored) {
+        Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
+      } else if (tier === 'premium') {
+        Alert.alert('Already active', 'Your subscription is already active.');
+      } else {
+        Alert.alert('No subscription found', 'We couldn\'t find an active subscription for this account. If you recently subscribed, try again in a moment.');
+      }
+    } catch (err) {
+      Alert.alert('Restore failed', err.message || 'Could not restore subscription. Please try again.');
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
   const handleGetPairing = async () => {
     const trimmed = cigar.trim();
     if (!trimmed) {
@@ -160,6 +186,17 @@ function Pairing() {
                   <MaterialCommunityIcons name="crown" size={20} color="#fff" style={styles.buttonIcon} />
                   <Text style={styles.buttonText}>Subscribe for $4.99/mo</Text>
                 </>
+              )}
+            </Pressable>
+            <Pressable
+              style={styles.restoreLink}
+              onPress={handleRestoreSubscription}
+              disabled={restoreLoading}
+            >
+              {restoreLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.restoreLinkText}>Already have a subscription? Restore it</Text>
               )}
             </Pressable>
           </View>
@@ -348,5 +385,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  restoreLink: {
+    marginTop: 16,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  restoreLinkText: {
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: '500',
   },
 });

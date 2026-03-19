@@ -24,7 +24,7 @@ const PREMIUM_FEATURES = [
   'AI drink pairings',
 ];
 
-export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccount }) {
+export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccount, onRestoreSubscription }) {
   return (
     <View style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -104,6 +104,11 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
           <Pressable style={styles.linkBtn} onPress={onAlreadyHaveAccount}>
             <Text style={styles.linkText}>Already have an account? Sign in</Text>
           </Pressable>
+          {onRestoreSubscription && (
+            <Pressable style={styles.linkBtn} onPress={onRestoreSubscription}>
+              <Text style={styles.linkText}>Restore subscription</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>
