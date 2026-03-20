@@ -97,6 +97,9 @@ export async function initDatabase() {
     if (!cigarsColNames.has('line')) {
       await db.execAsync('ALTER TABLE cigars ADD COLUMN line TEXT');
     }
+    if (!cigarsColNames.has('smoke_notes')) {
+      await db.execAsync('ALTER TABLE cigars ADD COLUMN smoke_notes TEXT');
+    }
 
     // Migration: humidor -> cavaro collection (recreate table to update CHECK constraint)
     const cigarsSchema = await db.getFirstAsync("SELECT sql FROM sqlite_master WHERE type='table' AND name='cigars'");

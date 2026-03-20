@@ -25,6 +25,7 @@ export default {
   accent: '#c4a574',         // Cognac - buttons, links
   like: '#5a8c4a',          // Tobacco leaf green
   dislike: '#9a6b5c',        // Muted brick
+  warning: '#b8860b',        // Dark amber - warnings, confirmations
 
   // Borders & dividers
   border: '#3d3329',

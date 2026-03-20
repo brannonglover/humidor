@@ -7,14 +7,26 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, COLLECTIONS } from '../db';
 import colors from '../theme/colors';
 import ImageViewerModal from './ImageViewerModal';
-import FavoriteNotesModal from './FavoriteNotesModal';
+import AddToFavoritesModal from './AddToFavoritesModal';
+import PersonalNotesModal from './PersonalNotesModal';
 import SmokedOneModal from './SmokedOneModal';
 import StrengthProfileModal from './StrengthProfileModal';
+import ConfirmModal from './ConfirmModal';
 import StrengthIndicator, { getOverallStrength } from './StrengthIndicator';
 import { parseStrengthProfile } from './StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
-import { submitReview } from '../api/reviews';
+
+function hasSmokeNotes(cigar) {
+  const s = (cigar?.smoke_notes ?? '').trim();
+  if (!s) return false;
+  try {
+    const o = JSON.parse(s);
+    return !!(o.draw || o.burn_line || o.ash_quality || o.smoke_output || o.relights_needed);
+  } catch {
+    return false;
+  }
+}
 
 function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProfile }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -24,12 +36,17 @@ function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProf
 
   const hasStrengthProfile = !!(cigar.strength_profile ?? '').trim();
   const { thirds: strengthThirds } = parseStrengthProfile(cigar.strength_profile ?? '');
+  const smokeNotes = (() => {
+    try {
+      const s = (cigar.smoke_notes ?? '').trim();
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
+  })();
   const hasNotes =
-    (cigar.favorite_notes ?? '').trim() ||
-    (cigar.flavor_profile ?? '').trim() ||
-    (cigar.construction_quality ?? '').trim() ||
+    (smokeNotes && (smokeNotes.draw || smokeNotes.burn_line || smokeNotes.ash_quality || smokeNotes.smoke_output || smokeNotes.relights_needed)) ||
     (cigar.smoked_date ?? '').trim() ||
-    (cigar.flavor_changes ?? '').trim() ||
     hasStrengthProfile;
 
   useEffect(() => {
@@ -58,11 +75,11 @@ function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProf
   }, [isExpanded, opacity, maxHeight, marginTop, marginBottom]);
 
   const allBlocks = [
-    cigar.favorite_notes && { label: 'Why you liked it', text: cigar.favorite_notes },
-    cigar.flavor_profile && { label: 'Flavor profile', text: cigar.flavor_profile },
-    cigar.construction_quality && { label: 'Construction', text: cigar.construction_quality },
-    cigar.smoked_date && { label: 'When smoked', text: cigar.smoked_date },
-    cigar.flavor_changes && { label: 'Flavor changes', text: cigar.flavor_changes },
+    smokeNotes?.draw && { label: 'Draw', text: smokeNotes.draw },
+    smokeNotes?.burn_line && { label: 'Burn line', text: smokeNotes.burn_line },
+    smokeNotes?.ash_quality && { label: 'Ash quality', text: smokeNotes.ash_quality },
+    smokeNotes?.smoke_output && { label: 'Smoke output', text: smokeNotes.smoke_output },
+    smokeNotes?.relights_needed && { label: 'Relights needed', text: smokeNotes.relights_needed },
   ].filter(Boolean);
 
   const strengthProfileBlock = hasStrengthProfile && (
@@ -193,18 +210,12 @@ function ExpandableDetails({ isExpanded, cigar }) {
     return () => { cancelled = true; };
   }, [isExpanded, cigar?.id]);
 
-  const dateAdded = cigar.date_added?.trim();
-  const addedDateFormatted = dateAdded
-    ? (() => {
-        const d = new Date(dateAdded);
-        return isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-      })()
-    : null;
+  const addedDateFormatted = formatDateStringLocal(cigar.date_added?.trim() ?? '');
 
-  const smokeHistoryFormatted = smokeHistory.map((r) => {
-    const d = new Date(r.smoked_at);
-    return isNaN(d.getTime()) ? r.smoked_at : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-  });
+  const smokeHistoryFormatted = smokeHistory.map((r) => formatDateStringLocal(r.smoked_at) ?? r.smoked_at);
+  const lastSmokedDisplay = smokeHistoryFormatted.length > 0
+    ? smokeHistoryFormatted.join(', ')
+    : formatLastSmoked(cigar);
 
   return (
     <Animated.View style={[
@@ -238,9 +249,9 @@ function ExpandableDetails({ isExpanded, cigar }) {
               {formatAgingDuration(cigar.date_added) ? ` (aged ${formatAgingDuration(cigar.date_added)})` : ''}
             </Text>
           )}
-          {smokeHistoryFormatted.length > 0 && (
+          {lastSmokedDisplay && (
             <Text style={styles.cigarText}>
-              <Text style={styles.boldText}>Last Smoked:</Text> {smokeHistoryFormatted.join(', ')}
+              <Text style={styles.boldText}>Last Smoked:</Text> {lastSmokedDisplay}
             </Text>
           )}
         </View>
@@ -285,7 +296,9 @@ function groupByBrand(cigars) {
  */
 function formatAgingDuration(dateAddedStr) {
   if (!dateAddedStr || !dateAddedStr.trim()) return null;
-  const added = new Date(dateAddedStr.trim());
+  const parts = dateAddedStr.trim().slice(0, 10).split('-').map(Number);
+  if (parts.length !== 3) return null;
+  const added = new Date(parts[0], parts[1] - 1, parts[2]);
   if (isNaN(added.getTime())) return null;
   const now = new Date();
   const diffMs = now - added;
@@ -302,6 +315,23 @@ function formatAgingDuration(dateAddedStr) {
   return `${Math.floor(diffDays / 365)} years`;
 }
 
+/** Parses YYYY-MM-DD as local date (new Date(str) treats it as UTC midnight, shifting day in western TZ). */
+function formatDateStringLocal(str) {
+  if (!str || !str.trim()) return null;
+  const s = str.trim().slice(0, 10);
+  const parts = s.split('-').map(Number);
+  if (parts.length !== 3) return str;
+  const [y, m, d] = parts;
+  const date = new Date(y, m - 1, d);
+  return isNaN(date.getTime()) ? str : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function formatLastSmoked(cigar) {
+  const raw = cigar.last_smoked?.trim() || cigar.smoked_date?.trim();
+  if (!raw) return null;
+  return formatDateStringLocal(raw) ?? raw;
+}
+
 const LONG_PRESS_MS = 500;
 
 const FREE_FAVORITES_LIMIT = 5;
@@ -314,11 +344,14 @@ export default function CigarList({ view, onEditCigar }) {
   const [viewerImage, setViewerImage] = useState(null);
   const [expandedStacks, setExpandedStacks] = useState({});
   const [expandedNotes, setExpandedNotes] = useState(null);
-  const [favoriteModalCigar, setFavoriteModalCigar] = useState(null);
-  const [favoriteModalMode, setFavoriteModalMode] = useState('add');
+  const [addToFavoritesModalCigar, setAddToFavoritesModalCigar] = useState(null);
+  const [personalNotesModalCigar, setPersonalNotesModalCigar] = useState(null);
   const [smokedOneModalCigar, setSmokedOneModalCigar] = useState(null);
   const [strengthProfileModalCigar, setStrengthProfileModalCigar] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ visible: false, title: '', message: '', buttons: [] });
   const flatListRef = React.useRef(null);
+
+  const closeConfirmModal = () => setConfirmModal((p) => ({ ...p, visible: false }));
 
   const isFavoritesWithStacks = view === COLLECTIONS.LIKES;
   const displayData = isFavoritesWithStacks ? groupByBrand(viewList) : viewList;
@@ -398,19 +431,25 @@ export default function CigarList({ view, onEditCigar }) {
     }
   }
 
+  const cigarQuery = (whereClause) =>
+    `SELECT cigars.*,
+      (SELECT smoked_at FROM smoke_history WHERE cigar_id = cigars.id ORDER BY smoked_at DESC LIMIT 1) as last_smoked
+    FROM cigars
+    WHERE ${whereClause}`;
+
   const refreshList = async () => {
     try {
       let rows;
       if (view === COLLECTIONS.LIKES) {
         rows = await db.getAllAsync(
-          "SELECT * FROM cigars WHERE collection = ? OR (collection = ? AND is_favorite = 1)",
+          cigarQuery('collection = ? OR (collection = ? AND is_favorite = 1)', [COLLECTIONS.LIKES, COLLECTIONS.CAVARO]),
           COLLECTIONS.LIKES,
           COLLECTIONS.CAVARO
         );
       } else if (view === COLLECTIONS.CAVARO) {
-        rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ? AND quantity > 0', view);
+        rows = await db.getAllAsync(cigarQuery('collection = ? AND quantity > 0', view), view);
       } else {
-        rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ?', view);
+        rows = await db.getAllAsync(cigarQuery('collection = ?', view), view);
       }
       setViewList(rows);
     } catch (error) {
@@ -434,10 +473,46 @@ export default function CigarList({ view, onEditCigar }) {
 
   const toggleFavorite = async (cigar, isFavorite) => {
     if (isFavorite) {
-      db.runAsync(
-        'UPDATE cigars SET is_favorite = 0, favorite_notes = NULL, flavor_profile = NULL, construction_quality = NULL, smoked_date = NULL, flavor_changes = NULL WHERE id = ?',
-        cigar.id
-      ).then(refreshList).catch((e) => console.log(e));
+      if (view === COLLECTIONS.LIKES) {
+        setConfirmModal({
+          visible: true,
+          title: 'Remove from favorites',
+          message: 'You smoked this cigar and unfavorited it. Should it go to Dislikes or be removed from favorites?',
+          buttons: [
+            { text: 'Cancel', style: 'cancel', onPress: closeConfirmModal },
+            {
+              text: 'Move to Dislikes',
+              onPress: () => {
+                closeConfirmModal();
+                onDislike(cigar.id);
+              },
+            },
+            {
+              text: 'Remove',
+              onPress: async () => {
+                closeConfirmModal();
+                try {
+                  const qty = Math.max(0, (parseInt(cigar.quantity, 10) || 1) - 1);
+                  await db.runAsync(
+                    'UPDATE cigars SET collection = ?, is_favorite = 0, quantity = ?, smoke_notes = NULL, smoked_date = NULL WHERE id = ?',
+                    COLLECTIONS.CAVARO,
+                    qty,
+                    cigar.id
+                  );
+                  refreshList();
+                } catch (e) {
+                  console.log(e);
+                }
+              },
+            },
+          ],
+        });
+      } else {
+        db.runAsync(
+          'UPDATE cigars SET is_favorite = 0, smoke_notes = NULL, smoked_date = NULL WHERE id = ?',
+          cigar.id
+        ).then(refreshList).catch((e) => console.log(e));
+      }
     } else {
       if (tier === 'free' && supabase) {
         const rows = await db.getAllAsync('SELECT COUNT(*) as n FROM cigars WHERE is_favorite = 1');
@@ -447,89 +522,58 @@ export default function CigarList({ view, onEditCigar }) {
           return;
         }
       }
-      setFavoriteModalMode('add');
-      setFavoriteModalCigar(cigar);
+      setAddToFavoritesModalCigar(cigar);
     }
   };
 
-  const handleFavoriteNotesSave = async (notes) => {
-    if (!favoriteModalCigar) return;
-    const cigarRef = favoriteModalCigar;
+  const openPersonalNotes = (cigar) => {
+    setPersonalNotesModalCigar(cigar);
+  };
+
+  const handleAddToFavorites = async (smokedDate) => {
+    if (!addToFavoritesModalCigar) return;
+    const cigar = addToFavoritesModalCigar;
+    const dateToUse = smokedDate?.trim() || null;
     try {
-      if (favoriteModalMode === 'add') {
-        const quantity = Math.max(0, parseInt(favoriteModalCigar.quantity, 10) || 1);
-        const isFromCavaro = view === COLLECTIONS.CAVARO;
-        const shouldLeaveCavaro = isFromCavaro && quantity < 2;
-        if (shouldLeaveCavaro) {
-          await db.runAsync(
-            `UPDATE cigars SET collection = ?, is_favorite = 1, favorite_notes = ?, flavor_profile = ?, construction_quality = ?, smoked_date = ?, flavor_changes = ? WHERE id = ?`,
-            COLLECTIONS.LIKES,
-            notes.favorite_notes || null,
-            notes.flavor_profile || null,
-            notes.construction_quality || null,
-            notes.smoked_date || null,
-            notes.flavor_changes || null,
-            favoriteModalCigar.id
-          );
-        } else {
-          const newQuantity = Math.max(1, quantity - 1);
-          await db.runAsync(
-            `UPDATE cigars SET is_favorite = 1, quantity = ?, favorite_notes = ?, flavor_profile = ?, construction_quality = ?, smoked_date = ?, flavor_changes = ? WHERE id = ?`,
-            newQuantity,
-            notes.favorite_notes || null,
-            notes.flavor_profile || null,
-            notes.construction_quality || null,
-            notes.smoked_date || null,
-            notes.flavor_changes || null,
-            favoriteModalCigar.id
-          );
-        }
-      } else {
+      const quantity = Math.max(0, parseInt(cigar.quantity, 10) || 1);
+      const isFromCavaro = view === COLLECTIONS.CAVARO;
+      const shouldLeaveCavaro = isFromCavaro && quantity < 2;
+      if (shouldLeaveCavaro) {
         await db.runAsync(
-          `UPDATE cigars SET favorite_notes = ?, flavor_profile = ?, construction_quality = ?, smoked_date = ?, flavor_changes = ? WHERE id = ?`,
-          notes.favorite_notes || null,
-          notes.flavor_profile || null,
-          notes.construction_quality || null,
-          notes.smoked_date || null,
-          notes.flavor_changes || null,
-          favoriteModalCigar.id
+          `UPDATE cigars SET collection = ?, is_favorite = 1, smoked_date = ? WHERE id = ?`,
+          COLLECTIONS.LIKES,
+          dateToUse,
+          cigar.id
+        );
+      } else {
+        const newQuantity = Math.max(1, quantity - 1);
+        await db.runAsync(
+          `UPDATE cigars SET is_favorite = 1, quantity = ?, smoked_date = ? WHERE id = ?`,
+          newQuantity,
+          dateToUse,
+          cigar.id
         );
       }
-      setFavoriteModalCigar(null);
+      setAddToFavoritesModalCigar(null);
       refreshList();
-
-      if ((notes.rating ?? 0) > 0 && cigarRef?.brand && cigarRef?.name && cigarRef?.length) {
-        try {
-          await submitReview({
-            brand: cigarRef.brand,
-            name: cigarRef.name,
-            length: cigarRef.length,
-            user_id: user?.id ?? null,
-            rating: notes.rating ?? null,
-            favorite_notes: notes.favorite_notes || null,
-            flavor_profile: cigarRef.flavor_profile || null,
-            construction_quality: cigarRef.construction_quality || null,
-            flavor_changes: cigarRef.flavor_changes || null,
-            strength_profile: cigarRef.strength_profile || null,
-          });
-        } catch (shareErr) {
-          console.warn('Share review failed:', shareErr);
-          Alert.alert(
-            'Could not share',
-            shareErr.message?.includes('catalog') || shareErr.message?.includes('not found')
-              ? 'This cigar isn\'t in the catalog yet. Only catalog cigars can be shared with the community.'
-              : 'Your notes were saved locally, but sharing failed. Try again later.'
-          );
-        }
-      }
     } catch (error) {
-      console.log(`Error: ${error}`);
+      console.log(`Error adding to favorites: ${error}`);
     }
   };
 
-  const openEditNotes = (cigar) => {
-    setFavoriteModalMode('edit');
-    setFavoriteModalCigar(cigar);
+  const handlePersonalNotesSave = async (notes) => {
+    if (!personalNotesModalCigar) return;
+    try {
+      await db.runAsync(
+        `UPDATE cigars SET smoke_notes = ? WHERE id = ?`,
+        notes.smoke_notes || null,
+        personalNotesModalCigar.id
+      );
+      setPersonalNotesModalCigar(null);
+      refreshList();
+    } catch (error) {
+      console.log(`Error saving notes: ${error}`);
+    }
   };
 
   const handleSmokedOneSave = async (smokedDate) => {
@@ -571,17 +615,49 @@ export default function CigarList({ view, onEditCigar }) {
     }
   };
 
-  const removeFromDislikes = async (id) => {
-    try {
-      await db.runAsync(
-        'UPDATE cigars SET collection = ?, is_favorite = 0 WHERE id = ?',
-        COLLECTIONS.CAVARO,
-        id
-      );
-      refreshList();
-    } catch (error) {
-      console.log(`Error: ${error}`);
-    }
+  const removeFromDislikes = async (cigar) => {
+    setConfirmModal({
+      visible: true,
+      title: 'Remove from Dislikes',
+      message: 'Remove this cigar from Dislikes?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel', onPress: closeConfirmModal },
+        {
+          text: 'Favorite',
+          onPress: async () => {
+            closeConfirmModal();
+            try {
+              await db.runAsync(
+                'UPDATE cigars SET collection = ?, is_favorite = 1 WHERE id = ?',
+                COLLECTIONS.LIKES,
+                cigar.id
+              );
+              refreshList();
+            } catch (e) {
+              console.log(e);
+            }
+          },
+        },
+        {
+          text: 'Remove',
+          onPress: async () => {
+            closeConfirmModal();
+            try {
+              const qty = Math.max(0, (parseInt(cigar.quantity, 10) || 1) - 1);
+              await db.runAsync(
+                'UPDATE cigars SET collection = ?, is_favorite = 0, quantity = ?, smoke_notes = NULL, smoked_date = NULL WHERE id = ?',
+                COLLECTIONS.CAVARO,
+                qty,
+                cigar.id
+              );
+              refreshList();
+            } catch (e) {
+              console.log(e);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const deleteCigar = async (id) => {
@@ -605,14 +681,14 @@ export default function CigarList({ view, onEditCigar }) {
           let rows;
           if (view === COLLECTIONS.LIKES) {
             rows = await db.getAllAsync(
-              "SELECT * FROM cigars WHERE collection = ? OR (collection = ? AND is_favorite = 1)",
+              cigarQuery('collection = ? OR (collection = ? AND is_favorite = 1)'),
               COLLECTIONS.LIKES,
               COLLECTIONS.CAVARO
             );
           } else if (view === COLLECTIONS.CAVARO) {
-            rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ? AND quantity > 0', view);
+            rows = await db.getAllAsync(cigarQuery('collection = ? AND quantity > 0'), view);
           } else {
-            rows = await db.getAllAsync('SELECT * FROM cigars WHERE collection = ?', view);
+            rows = await db.getAllAsync(cigarQuery('collection = ?'), view);
           }
           if (!cancelled) setViewList(rows);
         } catch (error) {
@@ -716,22 +792,7 @@ export default function CigarList({ view, onEditCigar }) {
             <ExpandableFavoriteNotes
               isExpanded={expandedNotes === cigar.id}
               cigar={cigar}
-              onEdit={view === 'likes' || view === 'dislikes' ? undefined : async () => {
-                if (cigar.is_favorite ?? 0) {
-                  openEditNotes(cigar);
-                } else {
-                  if (tier === 'free' && supabase) {
-                    const rows = await db.getAllAsync('SELECT COUNT(*) as n FROM cigars WHERE is_favorite = 1');
-                    const count = rows?.[0]?.n ?? 0;
-                    if (count >= FREE_FAVORITES_LIMIT) {
-                      showUpgradePrompt(`Free tier allows up to ${FREE_FAVORITES_LIMIT} favorites. Subscribe to Premium for unlimited.`);
-                      return;
-                    }
-                  }
-                  setFavoriteModalMode('add');
-                  setFavoriteModalCigar(cigar);
-                }
-              }}
+              onEdit={() => openPersonalNotes(cigar)}
               onOpenStrengthProfile={(c) => {
                 if (tier === 'free' && supabase) {
                   showUpgradePrompt('Strength profile is a Premium feature. Subscribe to add strength and flavor notes for each third.');
@@ -756,11 +817,7 @@ export default function CigarList({ view, onEditCigar }) {
                     name="note-text-outline"
                     size={22}
                     color={
-                      (cigar.favorite_notes ?? '').trim() ||
-                      (cigar.flavor_profile ?? '').trim() ||
-                      (cigar.construction_quality ?? '').trim() ||
-                      (cigar.smoked_date ?? '').trim() ||
-                      (cigar.flavor_changes ?? '').trim()
+                      hasSmokeNotes(cigar) || (cigar.smoked_date ?? '').trim()
                         ? colors.primary
                         : colors.textSecondary
                     }
@@ -844,11 +901,7 @@ export default function CigarList({ view, onEditCigar }) {
                     name="note-text-outline"
                     size={22}
                     color={
-                      (cigar.favorite_notes ?? '').trim() ||
-                      (cigar.flavor_profile ?? '').trim() ||
-                      (cigar.construction_quality ?? '').trim() ||
-                      (cigar.smoked_date ?? '').trim() ||
-                      (cigar.flavor_changes ?? '').trim()
+                      hasSmokeNotes(cigar) || (cigar.smoked_date ?? '').trim()
                         ? colors.primary
                         : colors.textSecondary
                     }
@@ -870,7 +923,7 @@ export default function CigarList({ view, onEditCigar }) {
                 <Pressable
                   onPress={(e) => {
                     e.stopPropagation();
-                    removeFromDislikes(cigar.id);
+                    removeFromDislikes(cigar);
                   }}
                   hitSlop={8}
                   style={styles.iconBtn}
@@ -975,19 +1028,20 @@ export default function CigarList({ view, onEditCigar }) {
         imageUri={viewerImage}
         onClose={() => setViewerImage(null)}
       />
-      <FavoriteNotesModal
-        visible={!!favoriteModalCigar}
-        cigar={favoriteModalCigar}
-        mode={favoriteModalMode}
-        initialNotes={favoriteModalCigar ? {
-          favorite_notes: favoriteModalCigar.favorite_notes,
-          flavor_profile: favoriteModalCigar.flavor_profile,
-          construction_quality: favoriteModalCigar.construction_quality,
-          smoked_date: favoriteModalCigar.smoked_date,
-          flavor_changes: favoriteModalCigar.flavor_changes,
+      <AddToFavoritesModal
+        visible={!!addToFavoritesModalCigar}
+        cigar={addToFavoritesModalCigar}
+        onAdd={handleAddToFavorites}
+        onCancel={() => setAddToFavoritesModalCigar(null)}
+      />
+      <PersonalNotesModal
+        visible={!!personalNotesModalCigar}
+        cigar={personalNotesModalCigar}
+        initialNotes={personalNotesModalCigar ? {
+          smoke_notes: personalNotesModalCigar.smoke_notes,
         } : {}}
-        onSave={handleFavoriteNotesSave}
-        onCancel={() => setFavoriteModalCigar(null)}
+        onSave={handlePersonalNotesSave}
+        onCancel={() => setPersonalNotesModalCigar(null)}
       />
       <SmokedOneModal
         visible={!!smokedOneModalCigar}
@@ -1001,6 +1055,14 @@ export default function CigarList({ view, onEditCigar }) {
         initialProfile={strengthProfileModalCigar?.strength_profile}
         onSave={handleStrengthProfileSave}
         onCancel={() => setStrengthProfileModalCigar(null)}
+      />
+      <ConfirmModal
+        visible={confirmModal.visible}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        buttons={confirmModal.buttons}
+        onClose={closeConfirmModal}
+        variant="warning"
       />
     </>
   );

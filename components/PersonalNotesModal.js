@@ -11,29 +11,72 @@ import {
   Dimensions,
 } from 'react-native';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import DatePickerField from './DatePickerField';
 import colors from '../theme/colors';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export default function FavoriteNotesModal({
+const OPTIONS = {
+  draw: ['tight', 'perfect', 'loose'],
+  burnLine: ['even', 'uneven', 'canoeing'],
+  ashQuality: ['solid', 'flaky'],
+  smokeOutput: ['thin', 'thick clouds'],
+};
+
+function OptionPicker({ label, options, value, onChange }) {
+  return (
+    <View style={styles.optionSection}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.optionRow}>
+        {options.map((opt) => (
+          <Pressable
+            key={opt}
+            onPress={() => onChange(value === opt ? '' : opt)}
+            style={[styles.optionChip, value === opt && styles.optionChipActive]}
+          >
+            <Text style={[styles.optionChipText, value === opt && styles.optionChipTextActive]}>{opt}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export default function PersonalNotesModal({
   visible,
   cigar,
   initialNotes = {},
-  mode = 'add',
   onSave,
   onCancel,
 }) {
-  const [smokedDate, setSmokedDate] = useState('');
-  const [rating, setRating] = useState(0);
+  const parsed = initialNotes.smoke_notes ? (() => {
+    try {
+      return JSON.parse(initialNotes.smoke_notes);
+    } catch {
+      return {};
+    }
+  })() : {};
+  const [draw, setDraw] = useState(parsed.draw ?? '');
+  const [burnLine, setBurnLine] = useState(parsed.burn_line ?? '');
+  const [ashQuality, setAshQuality] = useState(parsed.ash_quality ?? '');
+  const [smokeOutput, setSmokeOutput] = useState(parsed.smoke_output ?? '');
+  const [relightsNeeded, setRelightsNeeded] = useState(parsed.relights_needed ?? '');
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   useEffect(() => {
     if (visible) {
-      setSmokedDate(initialNotes.smoked_date ?? '');
-      setRating(0);
+      const p = initialNotes.smoke_notes ? (() => {
+        try {
+          return JSON.parse(initialNotes.smoke_notes);
+        } catch {
+          return {};
+        }
+      })() : {};
+      setDraw(p.draw ?? '');
+      setBurnLine(p.burn_line ?? '');
+      setAshQuality(p.ash_quality ?? '');
+      setSmokeOutput(p.smoke_output ?? '');
+      setRelightsNeeded(p.relights_needed ?? '');
     }
   }, [visible, initialNotes]);
 
@@ -73,13 +116,15 @@ export default function FavoriteNotesModal({
   };
 
   const handleSave = () => {
+    const smokeNotes = {
+      draw: draw || null,
+      burn_line: burnLine || null,
+      ash_quality: ashQuality || null,
+      smoke_output: smokeOutput || null,
+      relights_needed: relightsNeeded || null,
+    };
     const notes = {
-      favorite_notes: initialNotes.favorite_notes ?? null,
-      flavor_profile: initialNotes.flavor_profile ?? null,
-      flavor_changes: initialNotes.flavor_changes ?? null,
-      construction_quality: initialNotes.construction_quality ?? null,
-      smoked_date: smokedDate.trim(),
-      rating: rating > 0 ? rating : null,
+      smoke_notes: JSON.stringify(smokeNotes),
     };
     Animated.parallel([
       Animated.timing(overlayOpacity, {
@@ -116,7 +161,7 @@ export default function FavoriteNotesModal({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}>
-            <Text style={styles.title}>{mode === 'edit' ? 'Update favorite' : 'Add to favorites'}</Text>
+            <Text style={styles.title}>Personal Notes</Text>
             <Text style={styles.subtitle}>
               {[cigar.brand, cigar.line, cigar.name].filter(Boolean).join(' · ') || '—'}
             </Text>
@@ -128,29 +173,24 @@ export default function FavoriteNotesModal({
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled={Platform.OS === 'android'}
             >
-              <DatePickerField
-                label="Date smoked"
-                value={smokedDate}
-                onChange={setSmokedDate}
-                placeholder="Tap to pick date"
-                optional={true}
-              />
+              <OptionPicker label="Draw" options={OPTIONS.draw} value={draw} onChange={setDraw} />
+              <OptionPicker label="Burn line" options={OPTIONS.burnLine} value={burnLine} onChange={setBurnLine} />
+              <OptionPicker label="Ash quality" options={OPTIONS.ashQuality} value={ashQuality} onChange={setAshQuality} />
+              <OptionPicker label="Smoke output" options={OPTIONS.smokeOutput} value={smokeOutput} onChange={setSmokeOutput} />
 
-              <Text style={styles.label}>Rate it (tap a star to share with community)</Text>
-              <View style={styles.ratingRow}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Pressable
-                    key={n}
-                    onPress={() => setRating((prev) => (prev === n ? 0 : n))}
-                    style={styles.ratingStar}
-                  >
-                    <MaterialCommunityIcons
-                      name={n <= rating ? 'star' : 'star-outline'}
-                      size={32}
-                      color={n <= rating ? colors.primary : colors.textMuted}
-                    />
-                  </Pressable>
-                ))}
+              <View style={styles.optionSection}>
+                <Text style={styles.label}>Relights needed</Text>
+                <View style={styles.optionRow}>
+                  {['yes', 'no'].map((opt) => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setRelightsNeeded(relightsNeeded === opt ? '' : opt)}
+                      style={[styles.optionChip, relightsNeeded === opt && styles.optionChipActive]}
+                    >
+                      <Text style={[styles.optionChipText, relightsNeeded === opt && styles.optionChipTextActive]}>{opt}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             </ScrollView>
 
@@ -181,7 +221,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 50,
+    bottom: 40,
   },
   sheet: {
     backgroundColor: colors.cardBg,
@@ -206,12 +246,40 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    minHeight: 180,
-    maxHeight: 280,
+    minHeight: 220,
+    maxHeight: 550,
     paddingHorizontal: 20,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 80,
+  },
+  optionSection: {
+    marginBottom: 16,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  optionChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.screenBg,
+  },
+  optionChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '22',
+  },
+  optionChipText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  optionChipTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   label: {
     fontSize: 14,
@@ -244,13 +312,5 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: colors.screenBg,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    gap: 4,
-    marginBottom: 16,
-  },
-  ratingStar: {
-    padding: 4,
   },
 });

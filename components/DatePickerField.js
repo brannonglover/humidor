@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
 
 function toDateString(d) {
-  // Use local date - picker returns UTC midnight; timeZoneOffsetInMinutes makes it local-aware
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  // Picker returns midnight UTC for the selected date; getDate() in western TZ gives previous day.
+  // Use getUTC* to get the correct calendar date the user selected.
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 
@@ -90,32 +91,53 @@ export default function DatePickerField({ value, onChange, label, placeholder = 
           </Pressable>
         )}
       </View>
-      {showPicker && (
-        <View style={styles.pickerContainer}>
-          <DateTimePicker
-            value={pickerDate ?? dateObj}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleChange}
-            timeZoneOffsetInMinutes={-new Date().getTimezoneOffset()}
-            themeVariant="dark"
-          />
-        </View>
-      )}
-      {Platform.OS === 'ios' && showPicker && (
-        <View style={styles.iosPickerActions}>
-          <Pressable
-            onPress={() => {
-              // Use pickerDate (tracks scroll changes) or dateObj (initial) when user taps Done without scrolling
-              const dateToSave = pickerDate ?? dateObj;
-              onChange(toDateString(dateToSave));
-              setShowPicker(false);
-            }}
-            style={styles.iosPickerBtn}
-          >
-            <Text style={styles.iosPickerBtnText}>Done</Text>
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPicker(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowPicker(false)}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <View style={styles.pickerContainer}>
+                <DateTimePicker
+                  value={pickerDate ?? dateObj}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleChange}
+                  timeZoneOffsetInMinutes={-new Date().getTimezoneOffset()}
+                  themeVariant="dark"
+                />
+              </View>
+              <View style={styles.iosPickerActions}>
+                <Pressable
+                  onPress={() => {
+                    const dateToSave = pickerDate ?? dateObj;
+                    onChange(toDateString(dateToSave));
+                    setShowPicker(false);
+                  }}
+                  style={styles.iosPickerBtn}
+                >
+                  <Text style={styles.iosPickerBtnText}>Done</Text>
+                </Pressable>
+              </View>
+            </Pressable>
           </Pressable>
-        </View>
+        </Modal>
+      ) : (
+        showPicker && (
+          <View style={styles.pickerContainer}>
+            <DateTimePicker
+              value={pickerDate ?? dateObj}
+              mode="date"
+              display="default"
+              onChange={handleChange}
+              timeZoneOffsetInMinutes={-new Date().getTimezoneOffset()}
+              themeVariant="dark"
+            />
+          </View>
+        )
       )}
     </View>
   );
@@ -158,13 +180,30 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: colors.placeholderText,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    width: '100%',
+    maxWidth: 340,
+  },
   pickerContainer: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
-    marginTop: 8,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    marginTop: Platform.OS === 'android' ? 8 : 0,
+    height: Platform.OS === 'ios' ? 216 : undefined,
   },
   clearBtn: {
     paddingVertical: 8,
@@ -178,11 +217,12 @@ const styles = StyleSheet.create({
   iosPickerActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 8,
+    marginTop: 16,
+    paddingTop: 4,
   },
   iosPickerBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
   },
   iosPickerBtnText: {
     fontSize: 17,
