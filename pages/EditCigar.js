@@ -12,18 +12,17 @@ import {
   Image,
   Alert,
   ActionSheetIOS,
-  Linking,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db } from '../db';
 import { useAuth } from '../context/AuthContext';
-import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
 import { uploadCigarImage } from '../api/upload';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
 import DatePickerField from '../components/DatePickerField';
+import UpgradeToPremiumModal from '../components/UpgradeToPremiumModal';
 import { trackEvent } from '../lib/analytics';
 
 // Size format: #x## or #.#x## (e.g. 6x52, 7.5x50) - no slashes
@@ -49,6 +48,7 @@ export default function EditCigar() {
   const [image, setImage] = useState(cigar?.image ?? '');
   const [quantity, setQuantity] = useState(String(cigar?.quantity ?? 1));
   const [dateAdded, setDateAdded] = useState(cigar?.date_added ?? '');
+  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null });
 
   const scrollViewRef = useRef(null);
 
@@ -67,59 +67,11 @@ export default function EditCigar() {
           Alert.alert('Sign in required', 'Please sign in to subscribe to Premium.');
           return;
         }
-        Alert.alert('Upgrade to Premium', 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.', [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Restore subscription',
-            onPress: async () => {
-              try {
-                const { tier: newTier, restored } = await restoreSubscription(session.access_token);
-                refreshTier?.();
-                if (restored) {
-                  Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
-                } else if (newTier === 'premium') {
-                  Alert.alert('Already active', 'Your subscription is already active.');
-                } else {
-                  Alert.alert('No subscription found', 'We couldn\'t find an active subscription for this account.');
-                }
-              } catch (e) {
-                Alert.alert('Restore failed', e.message || 'Could not restore subscription.');
-              }
-            },
-          },
-          {
-            text: 'Subscribe',
-            onPress: async () => {
-              try {
-                const result = await subscribeOrManage(session.access_token, tier);
-                if (result?.alreadySubscribed) {
-                  Alert.alert(
-                    "You're already subscribed",
-                    'Would you like to manage your subscription?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Manage subscription',
-                        onPress: async () => {
-                          try {
-                            const url = await createPortalSession(session.access_token);
-                            if (url) await Linking.openURL(url);
-                          } catch (e) {
-                            Alert.alert('Error', e.message || 'Could not open subscription management');
-                          }
-                        },
-                      },
-                    ]
-                  );
-                } else if (typeof result === 'string') {
-                  await Linking.openURL(result);
-                }
-              } catch (e) {
-                Alert.alert('Error', e.message || 'Could not open checkout');
-              }
-            },
-          },
-        ]);
+        setUpgradeModal({
+          visible: true,
+          message: 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.',
+          accessToken: session.access_token,
+        });
       });
       return;
     }
@@ -416,6 +368,14 @@ export default function EditCigar() {
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <UpgradeToPremiumModal
+        visible={upgradeModal.visible}
+        message={upgradeModal.message}
+        onClose={() => setUpgradeModal((p) => ({ ...p, visible: false }))}
+        accessToken={upgradeModal.accessToken}
+        tier={tier}
+        refreshTier={refreshTier}
+      />
     </SafeAreaView>
   );
 }

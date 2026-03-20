@@ -84,7 +84,7 @@ export function ActionButtons() {
           <View style={styles.tabIcon}>
             <MaterialCommunityIcons
               name={focused ? 'star' : 'star-outline'}
-              size={28}
+              size={36}
               color={focused ? colors.primaryLight : colors.textSecondary}
             />
           </View>
@@ -95,7 +95,7 @@ export function ActionButtons() {
           <View style={styles.tabIcon}>
             <MaterialCommunityIcons
               name="cigar-off"
-              size={28}
+              size={36}
               color={focused ? colors.dislike : colors.textSecondary}
             />
           </View>
@@ -108,9 +108,9 @@ export function ActionButtons() {
           tabBarIcon: ({ focused }) => (
             <View style={[styles.humidorIconWrapper, focused && styles.humidorIconWrapperFocused]}>
               {focused ? (
-                <ListIconFocused size={36} color={colors.primary} />
+                <ListIconFocused size={44} color={colors.primary} />
               ) : (
-                <ListIconDefault size={36} color={colors.textSecondary} />
+                <ListIconDefault size={44} color={colors.textSecondary} />
               )}
             </View>
           )
@@ -121,7 +121,7 @@ export function ActionButtons() {
           <View style={styles.tabIcon}>
             <MaterialCommunityIcons
               name="magnify"
-              size={28}
+              size={36}
               color={focused ? colors.primary : colors.textSecondary}
             />
           </View>
@@ -132,7 +132,7 @@ export function ActionButtons() {
           <View style={styles.tabIcon}>
             <MaterialCommunityIcons
               name="glass-cocktail"
-              size={28}
+              size={36}
               color={focused ? colors.primary : colors.textSecondary}
             />
           </View>
@@ -146,15 +146,15 @@ const styles = StyleSheet.create({
   tabIcon: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
   },
   humidorIconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: colors.cardBorder,
     marginBottom: -8,
   },

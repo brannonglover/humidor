@@ -12,7 +12,6 @@ import {
   Image,
   Alert,
   ActionSheetIOS,
-  Linking,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import DropDownPicker from 'react-native-dropdown-picker';
@@ -21,11 +20,11 @@ import { db, COLLECTIONS } from '../db';
 import { fetchCatalog, addCigarToCatalog } from '../api/catalog';
 import { uploadCigarImage } from '../api/upload';
 import { useAuth } from '../context/AuthContext';
-import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
 import DatePickerField, { getTodayDateString } from '../components/DatePickerField';
+import UpgradeToPremiumModal from '../components/UpgradeToPremiumModal';
 import { trackEvent } from '../lib/analytics';
 
 const DropdownArrowDown = ({ style }) => (
@@ -50,9 +49,10 @@ const FREE_CIGAR_LIMIT = 5;
 export default function AddCigar() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { tier, supabase } = useAuth();
+  const { tier, supabase, refreshTier } = useAuth();
   const [showCustom, setShowCustom] = useState(false);
   const [cigarCount, setCigarCount] = useState(0);
+  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null });
   const enforceLimit = tier === 'free' && supabase;
 
   // Catalog selection state
@@ -189,59 +189,11 @@ export default function AddCigar() {
           Alert.alert('Sign in required', 'Please sign in to subscribe to Premium.');
           return;
         }
-        Alert.alert('Upgrade to Premium', 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.', [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Restore subscription',
-            onPress: async () => {
-              try {
-                const { tier: newTier, restored } = await restoreSubscription(session.access_token);
-                refreshTier?.();
-                if (restored) {
-                  Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
-                } else if (newTier === 'premium') {
-                  Alert.alert('Already active', 'Your subscription is already active.');
-                } else {
-                  Alert.alert('No subscription found', 'We couldn\'t find an active subscription for this account.');
-                }
-              } catch (e) {
-                Alert.alert('Restore failed', e.message || 'Could not restore subscription.');
-              }
-            },
-          },
-          {
-            text: 'Subscribe',
-            onPress: async () => {
-              try {
-                const result = await subscribeOrManage(session.access_token, tier);
-                if (result?.alreadySubscribed) {
-                  Alert.alert(
-                    "You're already subscribed",
-                    'Would you like to manage your subscription?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Manage subscription',
-                        onPress: async () => {
-                          try {
-                            const url = await createPortalSession(session.access_token);
-                            if (url) await Linking.openURL(url);
-                          } catch (e) {
-                            Alert.alert('Error', e.message || 'Could not open subscription management');
-                          }
-                        },
-                      },
-                    ]
-                  );
-                } else if (typeof result === 'string') {
-                  await Linking.openURL(result);
-                }
-              } catch (e) {
-                Alert.alert('Error', e.message || 'Could not open checkout');
-              }
-            },
-          },
-        ]);
+        setUpgradeModal({
+          visible: true,
+          message: 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.',
+          accessToken: session.access_token,
+        });
       });
       return;
     }
@@ -774,6 +726,14 @@ export default function AddCigar() {
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <UpgradeToPremiumModal
+        visible={upgradeModal.visible}
+        message={upgradeModal.message}
+        onClose={() => setUpgradeModal((p) => ({ ...p, visible: false }))}
+        accessToken={upgradeModal.accessToken}
+        tier={tier}
+        refreshTier={refreshTier}
+      />
     </SafeAreaView>
   );
 }
@@ -814,7 +774,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 280,
+    paddingBottom: 20,
   },
   section: {
     marginBottom: 24,

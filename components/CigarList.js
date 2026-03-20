@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, Text, View, FlatList, Pressable, Image, Animated, Alert, Linking } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Pressable, Image, Animated, Alert } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,10 +12,11 @@ import PersonalNotesModal from './PersonalNotesModal';
 import SmokedOneModal from './SmokedOneModal';
 import StrengthProfileModal from './StrengthProfileModal';
 import ConfirmModal from './ConfirmModal';
+import UpgradeToPremiumModal from './UpgradeToPremiumModal';
 import StrengthIndicator, { getOverallStrength } from './StrengthIndicator';
 import { parseStrengthProfile } from './StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
-import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
+import { restoreSubscription } from '../api/subscription';
 import { trackEvent } from '../lib/analytics';
 
 function hasSmokeNotes(cigar) {
@@ -350,6 +351,7 @@ export default function CigarList({ view, onEditCigar }) {
   const [smokedOneModalCigar, setSmokedOneModalCigar] = useState(null);
   const [strengthProfileModalCigar, setStrengthProfileModalCigar] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ visible: false, title: '', message: '', buttons: [] });
+  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null });
   const flatListRef = React.useRef(null);
 
   const closeConfirmModal = () => setConfirmModal((p) => ({ ...p, visible: false }));
@@ -364,61 +366,7 @@ export default function CigarList({ view, onEditCigar }) {
         Alert.alert('Sign in required', 'Please sign in to subscribe to Premium.');
         return;
       }
-      Alert.alert('Upgrade to Premium', message, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Restore subscription',
-          onPress: async () => {
-            try {
-              const { tier: newTier, restored } = await restoreSubscription(session.access_token);
-              refreshTier?.();
-              if (restored) {
-                Alert.alert('Subscription restored', 'Welcome back! Your Premium features are now active.');
-              } else if (newTier === 'premium') {
-                Alert.alert('Already active', 'Your subscription is already active.');
-              } else {
-                Alert.alert('No subscription found', 'We couldn\'t find an active subscription for this account.');
-              }
-            } catch (e) {
-              Alert.alert('Restore failed', e.message || 'Could not restore subscription.');
-            }
-          },
-        },
-        {
-          text: 'Subscribe',
-          onPress: async () => {
-            try {
-              const result = await subscribeOrManage(session.access_token, tier);
-              if (result?.alreadySubscribed) {
-                Alert.alert(
-                  "You're already subscribed",
-                  'Would you like to manage your subscription?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Manage subscription',
-                      onPress: async () => {
-                        try {
-                          const url = await createPortalSession(session.access_token);
-                          if (url) await Linking.openURL(url);
-                          refreshTier?.();
-                        } catch (e) {
-                          Alert.alert('Error', e.message || 'Could not open subscription management');
-                        }
-                      },
-                    },
-                  ]
-                );
-              } else if (typeof result === 'string') {
-                await Linking.openURL(result);
-                refreshTier?.();
-              }
-            } catch (e) {
-              Alert.alert('Error', e.message || 'Could not open checkout');
-            }
-          },
-        },
-      ]);
+      setUpgradeModal({ visible: true, message, accessToken: session.access_token });
     });
   };
 
@@ -1071,6 +1019,14 @@ export default function CigarList({ view, onEditCigar }) {
         buttons={confirmModal.buttons}
         onClose={closeConfirmModal}
         variant="warning"
+      />
+      <UpgradeToPremiumModal
+        visible={upgradeModal.visible}
+        message={upgradeModal.message}
+        onClose={() => setUpgradeModal((p) => ({ ...p, visible: false }))}
+        accessToken={upgradeModal.accessToken}
+        tier={tier}
+        refreshTier={refreshTier}
       />
     </>
   );
