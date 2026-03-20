@@ -20,6 +20,7 @@ import { subscribeOrManage, createPortalSession, restoreSubscription } from '../
 import { db } from '../db';
 import { COMMON_FLAVORS } from '../components/StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
+import { trackEvent } from '../lib/analytics';
 import colors from '../theme/colors';
 
 function filterCatalogByTaste(catalog, keywords) {
@@ -132,6 +133,7 @@ export default function Search({ navigation }) {
           rows = filterCatalogByTaste(catalog, keywords);
         }
         setSearchResults(rows ?? []);
+        trackEvent('search_performed', { keyword_count: keywords.length, has_results: !!(rows?.length) });
       } catch (err) {
         if (err.code === 'SEARCH_LIMIT_EXCEEDED') {
           setSearchLimitReached(true);
@@ -236,6 +238,7 @@ export default function Search({ navigation }) {
   const [topSectionExpanded, setTopSectionExpanded] = useState(false);
 
   const handleAddToCavaro = (cigar) => {
+    trackEvent('add_from_search', { brand: cigar.brand, name: cigar.name });
     navigation.navigate('Cavaro', {
       screen: 'AddCigar',
       params: { prefillBrand: cigar.brand, prefillName: cigar.name, prefillLength: cigar.length },

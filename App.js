@@ -3,7 +3,7 @@ import { Linking, View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainerWithAnalytics } from './components/NavigationAnalytics';
 import { ActionButtons } from './components/ActionButtons';
 import KeyboardAccessory from './components/KeyboardAccessory';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -55,24 +55,24 @@ function AppContent() {
     if (!showAuthFlow) {
       return (
         <View style={styles.appRoot}>
-          <NavigationContainer>
+          <NavigationContainerWithAnalytics>
             <ActionButtons />
-          </NavigationContainer>
+          </NavigationContainerWithAnalytics>
         </View>
       );
     }
     if (!user) {
       return (
-        <NavigationContainer>
+        <NavigationContainerWithAnalytics>
           <AuthStack onAuthenticated={() => {}} />
-        </NavigationContainer>
+        </NavigationContainerWithAnalytics>
       );
     }
     return (
       <View style={styles.appRoot}>
-        <NavigationContainer>
+        <NavigationContainerWithAnalytics>
           <ActionButtons />
-        </NavigationContainer>
+        </NavigationContainerWithAnalytics>
       </View>
     );
   };

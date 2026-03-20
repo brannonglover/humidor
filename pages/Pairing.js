@@ -20,6 +20,7 @@ import { getDrinkPairing } from '../api/pairing';
 import { subscribeOrManage, createPortalSession, getSubscriptionStatus, restoreSubscription } from '../api/subscription';
 import { API_BASE_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
+import { trackEvent } from '../lib/analytics';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 
@@ -146,6 +147,7 @@ function Pairing() {
       const token = (await supabase?.auth.getSession()).data?.session?.access_token;
       const result = await getDrinkPairing(trimmed, token);
       setPairing(result);
+      trackEvent('pairing_requested', { has_result: !!result });
     } catch (err) {
       Alert.alert('Could not get pairing', err.message || 'Please try again. Make sure the server is running and OPENAI_API_KEY is set.');
     } finally {

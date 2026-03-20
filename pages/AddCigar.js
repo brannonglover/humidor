@@ -26,6 +26,7 @@ import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
 import DatePickerField, { getTodayDateString } from '../components/DatePickerField';
+import { trackEvent } from '../lib/analytics';
 
 const DropdownArrowDown = ({ style }) => (
   <View style={style}>
@@ -340,6 +341,7 @@ export default function AddCigar() {
         COLLECTIONS.CAVARO,
         dateToUse
       );
+      trackEvent('cigar_added', { source: 'catalog', quantity: qty });
       navigation.goBack();
     } catch (error) {
       console.log('Add failed:', error);
@@ -404,6 +406,7 @@ export default function AddCigar() {
         COLLECTIONS.CAVARO,
         dateToUse
       );
+      trackEvent('cigar_added', { source: 'custom', quantity: qty });
       navigation.goBack();
     } catch (error) {
       console.log('Add custom failed:', error);

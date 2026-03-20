@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
+import { setUserId } from '../lib/analytics';
 import AsyncStorage from 'expo-sqlite/kv-store';
 import { API_BASE_URL } from '../api/config';
 
@@ -33,7 +34,9 @@ export function AuthProvider({ children }) {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
+      setUserId(u?.id ?? null);
       if (session?.access_token) {
         fetchTier(session.access_token).then(setTier).catch(() => setTier('free'));
       } else {
@@ -43,7 +46,9 @@ export function AuthProvider({ children }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
+      setUserId(u?.id ?? null);
       if (session?.access_token) {
         try {
           const t = await fetchTier(session.access_token);

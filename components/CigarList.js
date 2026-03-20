@@ -16,6 +16,7 @@ import StrengthIndicator, { getOverallStrength } from './StrengthIndicator';
 import { parseStrengthProfile } from './StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
+import { trackEvent } from '../lib/analytics';
 
 function hasSmokeNotes(cigar) {
   const s = (cigar?.smoke_notes ?? '').trim();
@@ -459,6 +460,7 @@ export default function CigarList({ view, onEditCigar }) {
 
   const onDislike = async (id) => {
     try {
+      trackEvent('cigar_disliked');
       await db.runAsync(
         'UPDATE cigars SET collection = ?, is_favorite = 0 WHERE id = ?',
         COLLECTIONS.DISLIKES,
@@ -492,6 +494,7 @@ export default function CigarList({ view, onEditCigar }) {
               onPress: async () => {
                 closeConfirmModal();
                 try {
+                  trackEvent('cigar_unfavorited');
                   const qty = Math.max(0, (parseInt(cigar.quantity, 10) || 1) - 1);
                   await db.runAsync(
                     'UPDATE cigars SET collection = ?, is_favorite = 0, quantity = ?, smoke_notes = NULL, smoked_date = NULL WHERE id = ?',
@@ -508,6 +511,7 @@ export default function CigarList({ view, onEditCigar }) {
           ],
         });
       } else {
+        trackEvent('cigar_unfavorited');
         db.runAsync(
           'UPDATE cigars SET is_favorite = 0, smoke_notes = NULL, smoked_date = NULL WHERE id = ?',
           cigar.id
@@ -554,6 +558,7 @@ export default function CigarList({ view, onEditCigar }) {
           cigar.id
         );
       }
+      trackEvent('cigar_favorited');
       setAddToFavoritesModalCigar(null);
       refreshList();
     } catch (error) {
@@ -569,6 +574,7 @@ export default function CigarList({ view, onEditCigar }) {
         notes.smoke_notes || null,
         personalNotesModalCigar.id
       );
+      trackEvent('personal_notes_saved');
       setPersonalNotesModalCigar(null);
       refreshList();
     } catch (error) {
@@ -592,6 +598,7 @@ export default function CigarList({ view, onEditCigar }) {
         newQuantity,
         smokedOneModalCigar.id
       );
+      trackEvent('cigar_smoked');
       setSmokedOneModalCigar(null);
       refreshList();
     } catch (error) {
@@ -608,6 +615,7 @@ export default function CigarList({ view, onEditCigar }) {
         json,
         strengthProfileModalCigar.id
       );
+      trackEvent('strength_profile_saved');
       setStrengthProfileModalCigar(null);
       refreshList();
     } catch (error) {

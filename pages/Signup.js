@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
+import { trackEvent } from '../lib/analytics';
 
 export default function Signup({ supabase, tier, onSuccess, onBack, onGoToLogin }) {
   const [email, setEmail] = useState('');
@@ -44,6 +45,7 @@ export default function Signup({ supabase, tier, onSuccess, onBack, onGoToLogin 
         }
       );
       if (error) throw error;
+      trackEvent('signup_success', { tier });
       if (data.session) {
         // User is immediately logged in (email confirmation disabled)
         onSuccess?.();

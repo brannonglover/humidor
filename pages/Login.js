@@ -15,6 +15,7 @@ import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { restoreSubscription } from '../api/subscription';
 import { useAuth } from '../context/AuthContext';
+import { trackEvent } from '../lib/analytics';
 
 export default function Login({ supabase, onSuccess, onBack, restoreAfterSignIn }) {
   const { refreshTier } = useAuth();
@@ -37,6 +38,7 @@ export default function Login({ supabase, onSuccess, onBack, restoreAfterSignIn 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: e, password: p });
       if (error) throw error;
+      trackEvent('login_success');
       if (restoreAfterSignIn) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.access_token) {

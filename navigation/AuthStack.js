@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { trackEvent } from '../lib/analytics';
 import Landing from '../pages/Landing';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
@@ -23,15 +24,23 @@ export default function AuthStack({ onAuthenticated }) {
         {({ navigation }) => (
           <Landing
             onGetStarted={() => {
+              trackEvent('landing_cta', { action: 'get_started' });
               setSignupTier('free');
               navigation.navigate('Signup');
             }}
             onSubscribe={() => {
+              trackEvent('landing_cta', { action: 'subscribe' });
               setSignupTier('premium');
               navigation.navigate('Signup');
             }}
-            onAlreadyHaveAccount={() => navigation.navigate('Login')}
-            onRestoreSubscription={() => navigation.navigate('Login', { restoreAfterSignIn: true })}
+            onAlreadyHaveAccount={() => {
+              trackEvent('landing_cta', { action: 'already_have_account' });
+              navigation.navigate('Login');
+            }}
+            onRestoreSubscription={() => {
+              trackEvent('landing_cta', { action: 'restore_subscription' });
+              navigation.navigate('Login', { restoreAfterSignIn: true });
+            }}
           />
         )}
       </Stack.Screen>

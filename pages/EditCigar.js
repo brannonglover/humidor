@@ -24,6 +24,7 @@ import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
 import { pickCigarImage, takeCigarPhoto } from '../utils/imagePicker';
 import DatePickerField from '../components/DatePickerField';
+import { trackEvent } from '../lib/analytics';
 
 // Size format: #x## or #.#x## (e.g. 6x52, 7.5x50) - no slashes
 const SIZE_FORMAT = /^\d+(\.\d+)?x\d+(\.\d+)?$/;
@@ -203,6 +204,7 @@ export default function EditCigar() {
         dateAddedVal,
         cigar.id
       );
+      trackEvent('cigar_edited');
       navigation.goBack();
     } catch (error) {
       console.log('Edit failed:', error);
