@@ -98,7 +98,7 @@ export default function Signup({ supabase, tier, onSuccess, onBack, onGoToLogin 
 
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>
-            {tier === 'premium' ? 'Subscribe for $4.99/mo after signup' : 'Free tier: up to 5 cigars'}
+            {tier === 'premium' ? 'Subscribe for $2.99/mo after signup' : 'Free tier: up to 5 cigars'}
           </Text>
 
           <TextInput

@@ -173,7 +173,7 @@ function Pairing() {
               <MaterialCommunityIcons name="glass-cocktail" size={48} color={colors.primary} style={styles.upgradeIcon} />
               <Text style={styles.upgradeTitle}>Unlock Drink Pairing</Text>
               <Text style={styles.upgradeText}>
-                Get AI-powered drink suggestions for every cigar. Subscribe to Premium for $4.99/mo.
+                Get AI-powered drink suggestions for every cigar. Subscribe to Premium for $2.99/mo.
               </Text>
             </View>
             <Pressable
@@ -186,7 +186,7 @@ function Pairing() {
               ) : (
                 <>
                   <MaterialCommunityIcons name="crown" size={20} color="#fff" style={styles.buttonIcon} />
-                  <Text style={styles.buttonText}>Subscribe for $4.99/mo</Text>
+                  <Text style={styles.buttonText}>Subscribe for $2.99/mo</Text>
                 </>
               )}
             </Pressable>

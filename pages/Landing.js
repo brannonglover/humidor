@@ -86,7 +86,7 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
                 <Text style={styles.popularBadgeText}>Most popular</Text>
               </View>
               <Text style={styles.tierTitle}>Premium</Text>
-              <Text style={styles.tierPrice}>$4.99/mo</Text>
+              <Text style={styles.tierPrice}>$2.99/mo</Text>
               <View style={styles.tierFeatures}>
                 {PREMIUM_FEATURES.map((f, i) => (
                   <View key={i} style={styles.tierFeatureRow}>

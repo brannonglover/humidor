@@ -355,13 +355,13 @@ export default function Search({ navigation }) {
                 <View>
                   <Text style={styles.sectionTitle}>Top 5 from community reviews</Text>
                   <Text style={styles.topSectionSubtitle}>
-                    Subscribe to Premium for $4.99/mo to see highest-rated cigars
+                    Subscribe to Premium for $2.99/mo to see highest-rated cigars
                   </Text>
                 </View>
                 <MaterialCommunityIcons name="lock" size={24} color={colors.textMuted} />
               </View>
               <Pressable style={styles.upgradeCard} onPress={handleUpgradePress}>
-                <Text style={styles.upgradeCardText}>Subscribe for $4.99/mo to see top cigars</Text>
+                <Text style={styles.upgradeCardText}>Subscribe for $2.99/mo to see top cigars</Text>
                 <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
               </Pressable>
               <Pressable style={styles.restoreLink} onPress={handleRestorePress}>
@@ -378,10 +378,10 @@ export default function Search({ navigation }) {
               ) : searchLimitReached ? (
                 <View style={styles.limitReachedWrap}>
                   <Text style={styles.limitReachedText}>
-                    Free users get 3 searches per day. Subscribe for $4.99/mo for unlimited searches.
+                    Free users get 3 searches per day. Subscribe for $2.99/mo for unlimited searches.
                   </Text>
                   <Pressable style={styles.upgradeBtn} onPress={handleUpgradePress}>
-                    <Text style={styles.upgradeBtnText}>Subscribe for $4.99/mo</Text>
+                    <Text style={styles.upgradeBtnText}>Subscribe for $2.99/mo</Text>
                   </Pressable>
                   <Pressable style={styles.restoreLink} onPress={handleRestorePress}>
                     <Text style={styles.restoreLinkText}>Restore subscription</Text>

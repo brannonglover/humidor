@@ -69,7 +69,7 @@ export default function EditCigar() {
         }
         setUpgradeModal({
           visible: true,
-          message: 'Photos are a Premium feature. Subscribe for $4.99/mo to add photos to your cigars.',
+          message: 'Photos are a Premium feature. Subscribe for $2.99/mo to add photos to your cigars.',
           accessToken: session.access_token,
         });
       });

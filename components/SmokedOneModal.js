@@ -181,6 +181,7 @@ const styles = StyleSheet.create({
   cancelBtn: {
     paddingVertical: 12,
     paddingHorizontal: 20,
+    alignItems: 'center',
   },
   cancelText: {
     fontSize: 17,

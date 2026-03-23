@@ -48,7 +48,6 @@ function ExpandableFavoriteNotes({ isExpanded, cigar, onEdit, onOpenStrengthProf
   })();
   const hasNotes =
     (smokeNotes && (smokeNotes.draw || smokeNotes.burn_line || smokeNotes.ash_quality || smokeNotes.smoke_output || smokeNotes.relights_needed)) ||
-    (cigar.smoked_date ?? '').trim() ||
     hasStrengthProfile;
 
   useEffect(() => {
@@ -359,7 +358,7 @@ export default function CigarList({ view, onEditCigar }) {
   const isFavoritesWithStacks = view === COLLECTIONS.LIKES;
   const displayData = isFavoritesWithStacks ? groupByBrand(viewList) : viewList;
 
-  const showUpgradePrompt = (message = 'Subscribe to Premium for $4.99/mo to unlock this feature.') => {
+  const showUpgradePrompt = (message = 'Subscribe to Premium for $2.99/mo to unlock this feature.') => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session?.access_token) {
@@ -771,9 +770,9 @@ export default function CigarList({ view, onEditCigar }) {
                 >
                   <MaterialCommunityIcons
                     name="note-text-outline"
-                    size={22}
+                    size={26}
                     color={
-                      hasSmokeNotes(cigar) || (cigar.smoked_date ?? '').trim()
+                      hasSmokeNotes(cigar) || !!(cigar.strength_profile ?? '').trim()
                         ? colors.primary
                         : colors.textSecondary
                     }
@@ -855,9 +854,9 @@ export default function CigarList({ view, onEditCigar }) {
                 >
                   <MaterialCommunityIcons
                     name="note-text-outline"
-                    size={22}
+                    size={26}
                     color={
-                      hasSmokeNotes(cigar) || (cigar.smoked_date ?? '').trim()
+                      hasSmokeNotes(cigar) || !!(cigar.strength_profile ?? '').trim()
                         ? colors.primary
                         : colors.textSecondary
                     }

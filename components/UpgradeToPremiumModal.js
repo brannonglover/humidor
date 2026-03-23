@@ -17,7 +17,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  */
 export default function UpgradeToPremiumModal({
   visible,
-  message = 'Subscribe to Premium for $4.99/mo to unlock this feature.',
+  message = 'Subscribe to Premium for $2.99/mo to unlock this feature.',
   onClose,
   accessToken,
   tier,
@@ -239,7 +239,8 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
   },
   cancelBtn: {
-    borderColor: colors.cardBorder,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
   },
   secondaryBtn: {
     borderColor: colors.primary,
