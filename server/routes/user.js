@@ -1,57 +1,15 @@
 const express = require('express');
-const router = express.Router();
-const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 const pool = require('../config/postgres');
+const { syncSubscriptionTierFromApple, iapConfigured } = require('../lib/appleAppStore');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
 const supabase = supabaseUrl && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : null;
-const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
-/**
- * If user is free and has no stripe_customer_id, try to link by email (website subscribers).
- */
-async function tryLinkSubscriptionByEmail(userId, userEmail) {
-  if (!stripe || !userEmail) return null;
-
-  const { rows } = await pool.query(
-    'SELECT tier, stripe_customer_id FROM user_profiles WHERE id = $1',
-    [userId]
-  );
-  const profile = rows[0];
-  if (!profile || profile.tier === 'premium' || profile.stripe_customer_id) {
-    return null;
-  }
-
-  try {
-    const { data: customers } = await stripe.customers.list({
-      email: userEmail.trim(),
-      limit: 1,
-    });
-    const customer = customers[0];
-    if (!customer) return null;
-
-    const { data: subs } = await stripe.subscriptions.list({
-      customer: customer.id,
-      status: 'active',
-      limit: 1,
-    });
-    if (!subs.length) return null;
-
-    await pool.query(
-      "UPDATE user_profiles SET stripe_customer_id = $1, tier = 'premium', updated_at = NOW() WHERE id = $2",
-      [customer.id, userId]
-    );
-    return 'premium';
-  } catch (err) {
-    console.error('Link subscription by email error:', err);
-    return null;
-  }
-}
+const router = express.Router();
 
 /**
  * GET /api/user/tier
@@ -78,9 +36,8 @@ router.get('/tier', async (req, res) => {
       [user.id]
     );
 
-    const linked = await tryLinkSubscriptionByEmail(user.id, user.email);
-    if (linked === 'premium') {
-      return res.json({ tier: 'premium' });
+    if (iapConfigured()) {
+      await syncSubscriptionTierFromApple(pool, user.id);
     }
 
     const { rows } = await pool.query(
@@ -92,6 +49,41 @@ router.get('/tier', async (req, res) => {
   } catch (err) {
     console.error('Tier fetch error:', err);
     return res.status(500).json({ tier: 'free' });
+  }
+});
+
+/**
+ * DELETE /api/user/account
+ * Permanently deletes the user: Postgres profile/reviews, Supabase Auth.
+ * Requires: Authorization: Bearer <supabase_access_token>
+ */
+router.delete('/account', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token || !supabase) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const userId = user.id;
+
+    await pool.query('DELETE FROM cigar_reviews WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM user_profiles WHERE id = $1', [userId]);
+
+    const { error: delErr } = await supabase.auth.admin.deleteUser(userId);
+    if (delErr) {
+      console.error('Supabase admin deleteUser:', delErr);
+      return res.status(500).json({ error: delErr.message || 'Failed to delete account' });
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete account' });
   }
 });
 

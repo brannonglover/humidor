@@ -6,15 +6,26 @@ import {
   Modal,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
+import ConfirmModal from './ConfirmModal';
+import { useAuth } from '../context/AuthContext';
+import { deleteAccount } from '../api/user';
+import { wipeLocalUserData } from '../db';
+import { trackEvent } from '../lib/analytics';
 
-const DROPDOWN_WIDTH = 160;
+const DROPDOWN_WIDTH = 188;
 const DROPDOWN_PADDING = 8;
 
 export default function AccountMenu({ onSignOut, children }) {
+  const { supabase } = useAuth();
   const [visible, setVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  /** null | 1 (first warning) | 2 (final confirm) */
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
   const [position, setPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const triggerRef = useRef(null);
 
@@ -32,6 +43,41 @@ export default function AccountMenu({ onSignOut, children }) {
     onSignOut?.();
   };
 
+  const runDeleteAccount = async () => {
+    setDeleteConfirmStep(null);
+    if (!supabase) {
+      setDeleteError('Sign in is not configured.');
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      setDeleteError('Sign in again, then try deleting your account.');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteAccount(session.access_token);
+      try {
+        await wipeLocalUserData();
+      } catch {
+        // Account is already removed; local wipe is best-effort.
+      }
+      trackEvent('account_deleted');
+      await supabase.auth.signOut();
+    } catch (err) {
+      setDeleteError(
+        err.message || 'Check your connection and try again. If this continues, contact support.'
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmDeleteAccount = () => {
+    close();
+    setDeleteConfirmStep(1);
+  };
+
   const screenWidth = Dimensions.get('window').width;
   const dropdownLeft = Math.min(
     Math.max(position.x + position.width - DROPDOWN_WIDTH, DROPDOWN_PADDING),
@@ -41,6 +87,57 @@ export default function AccountMenu({ onSignOut, children }) {
 
   return (
     <>
+      <ConfirmModal
+        visible={deleteConfirmStep === 1}
+        title="Delete your account?"
+        message={
+          'This permanently removes your Cavaro account, subscription, community reviews linked to it, and clears this device\'s collection. This cannot be undone.'
+        }
+        variant="warning"
+        onClose={() => setDeleteConfirmStep(null)}
+        buttons={[
+          { text: 'Cancel', style: 'cancel', onPress: () => setDeleteConfirmStep(null) },
+          {
+            text: 'Continue',
+            style: 'default',
+            onPress: () => setDeleteConfirmStep(2),
+          },
+        ]}
+      />
+      <ConfirmModal
+        visible={deleteConfirmStep === 2}
+        title="Delete account permanently?"
+        message="Your account and server data will be deleted now."
+        variant="warning"
+        onClose={() => setDeleteConfirmStep(null)}
+        buttons={[
+          { text: 'Cancel', style: 'cancel', onPress: () => setDeleteConfirmStep(null) },
+          {
+            text: 'Delete account',
+            style: 'destructive',
+            onPress: () => void runDeleteAccount(),
+          },
+        ]}
+      />
+      <ConfirmModal
+        visible={!!deleteError}
+        title="Could not delete account"
+        message={deleteError || ''}
+        variant="warning"
+        onClose={() => setDeleteError(null)}
+        buttons={[
+          {
+            text: 'OK',
+            style: 'cancel',
+            onPress: () => setDeleteError(null),
+          },
+        ]}
+      />
+      <Modal visible={deleting} transparent animationType="fade">
+        <View style={styles.deletingOverlay}>
+          <ActivityIndicator size="large" color={colors.textSecondary} />
+        </View>
+      </Modal>
       <Pressable ref={triggerRef} onPress={open} style={styles.trigger}>
         {children}
       </Pressable>
@@ -63,6 +160,7 @@ export default function AccountMenu({ onSignOut, children }) {
             <Pressable
               style={styles.menuItem}
               onPress={handleSignOut}
+              disabled={deleting}
               android_ripple={{ color: colors.borderLight }}
             >
               <MaterialCommunityIcons
@@ -72,6 +170,20 @@ export default function AccountMenu({ onSignOut, children }) {
                 style={styles.menuIcon}
               />
               <Text style={styles.menuItemTextDestructive}>Sign out</Text>
+            </Pressable>
+            <Pressable
+              style={styles.menuItem}
+              onPress={confirmDeleteAccount}
+              disabled={deleting}
+              android_ripple={{ color: colors.borderLight }}
+            >
+              <MaterialCommunityIcons
+                name="account-remove"
+                size={20}
+                color={colors.dislike}
+                style={styles.menuIcon}
+              />
+              <Text style={styles.menuItemTextDestructive}>Delete account</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -83,6 +195,12 @@ export default function AccountMenu({ onSignOut, children }) {
 const styles = StyleSheet.create({
   trigger: {
     padding: 8,
+  },
+  deletingOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   overlay: {
     flex: 1,

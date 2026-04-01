@@ -240,3 +240,13 @@ export async function getTopReviewedCigars(limit = 5) {
   `, [limit]);
   return rows ?? [];
 }
+
+/**
+ * Removes local collection and smoke history (e.g. after account deletion).
+ */
+export async function wipeLocalUserData() {
+  await db.withTransactionAsync(async () => {
+    await db.execAsync('DELETE FROM smoke_history');
+    await db.execAsync('DELETE FROM cigars');
+  });
+}

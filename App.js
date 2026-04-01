@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Linking, View, StyleSheet, Text, Image, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthStack from './navigation/AuthStack';
 import { ClickOutsideProvider } from 'react-native-click-outside';
 import { initDatabase } from './db';
+import IapSubscriptionBridge from './components/IapSubscriptionBridge';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -135,8 +136,6 @@ const styles = StyleSheet.create({
   },
 });
 
-const PENDING_SESSION_MAX_RETRIES = 10;
-
 function createSessionFromAuthUrl(url, supabase) {
   const hashIndex = url.indexOf('#');
   const hash = hashIndex >= 0 ? url.substring(hashIndex + 1) : '';
@@ -150,85 +149,26 @@ function createSessionFromAuthUrl(url, supabase) {
   });
 }
 
-function SubscriptionDeepLinkHandler() {
-  const { refreshTier, setTierFromSubscription, user, supabase } = useAuth();
-  const pendingSessionId = useRef(null);
-  const [pendingTrigger, setPendingTrigger] = useState(0);
-  const retryCount = useRef(0);
+/** Email magic-link / OAuth: cavaro://...#access_token=... */
+function AuthDeepLinkHandler() {
+  const { supabase } = useAuth();
 
   useEffect(() => {
-    const processReturnFromCheckout = async (sessionId, accessToken) => {
-      if (!sessionId || !accessToken) return;
-      try {
-        const { confirmCheckoutSession } = await import('./api/subscription');
-        const tier = await confirmCheckoutSession(accessToken, sessionId);
-        if (tier === 'premium') {
-          setTierFromSubscription?.('premium');
-        }
-      } finally {
-        refreshTier?.();
-      }
-    };
-
     const handleIncomingUrl = async (url) => {
-      if (!url) return;
-      // Auth callback from email confirmation (cavaro://auth/callback#access_token=...)
-      if (url.includes('access_token') && supabase) {
+      if (!url || !supabase) return;
+      if (url.includes('access_token')) {
         try {
           await createSessionFromAuthUrl(url, supabase);
         } catch (e) {
           console.warn('Auth callback error:', e);
         }
-        return;
-      }
-      if (!url.includes('subscribe-success')) return;
-      const encoded = url.match(/session_id=([^&]+)/)?.[1];
-      const sessionId = encoded ? decodeURIComponent(encoded) : null;
-      if (!sessionId) {
-        refreshTier?.();
-        return;
-      }
-      if (user && supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          await processReturnFromCheckout(sessionId, session.access_token);
-        } else {
-          pendingSessionId.current = sessionId;
-          setPendingTrigger((t) => t + 1);
-        }
-      } else {
-        pendingSessionId.current = sessionId;
-        setPendingTrigger((t) => t + 1);
       }
     };
 
-    const handleUrl = ({ url }) => handleIncomingUrl(url);
-    const sub = Linking.addEventListener('url', handleUrl);
+    const sub = Linking.addEventListener('url', ({ url }) => handleIncomingUrl(url));
     Linking.getInitialURL().then(handleIncomingUrl);
     return () => sub.remove();
-  }, [refreshTier, setTierFromSubscription, user, supabase]);
-
-  // Process pending session when user becomes available (e.g. cold start from deep link)
-  useEffect(() => {
-    const sid = pendingSessionId.current;
-    if (!sid || !user || !supabase) return;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) {
-        pendingSessionId.current = null;
-        retryCount.current = 0;
-        import('./api/subscription').then(({ confirmCheckoutSession }) =>
-          confirmCheckoutSession(session.access_token, sid).then((tier) => {
-            if (tier === 'premium') setTierFromSubscription?.('premium');
-          }).finally(() => refreshTier?.())
-        );
-      } else if (retryCount.current < PENDING_SESSION_MAX_RETRIES) {
-        retryCount.current += 1;
-        setTimeout(() => setPendingTrigger((t) => t + 1), 300);
-      } else {
-        pendingSessionId.current = null;
-      }
-    });
-  }, [user, supabase, refreshTier, setTierFromSubscription, pendingTrigger]);
+  }, [supabase]);
 
   return null;
 }
@@ -239,7 +179,8 @@ function App() {
       <StatusBar style="light" />
       <KeyboardAccessory />
       <AuthProvider>
-        <SubscriptionDeepLinkHandler />
+        <AuthDeepLinkHandler />
+        <IapSubscriptionBridge />
         <ClickOutsideProvider>
           <AppContent />
         </ClickOutsideProvider>

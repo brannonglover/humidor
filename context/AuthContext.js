@@ -1,9 +1,33 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError } from '@supabase/auth-js';
 import { setUserId } from '../lib/analytics';
 import AsyncStorage from 'expo-sqlite/kv-store';
 import { API_BASE_URL } from '../api/config';
+
+/** Non-retryable refresh failures (revoked session, etc.) — clear local auth so user can sign in again. */
+function isInvalidRefreshError(error) {
+  if (!error || isAuthRetryableFetchError(error)) return false;
+  if (error.code === 'refresh_token_not_found') return true;
+  const msg = String(error.message || '').toLowerCase();
+  return msg.includes('refresh token') && (msg.includes('invalid') || msg.includes('not found'));
+}
+
+async function recoverFromInvalidRefresh(supabase, error) {
+  if (!isInvalidRefreshError(error)) return;
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    /* session already cleared */
+  }
+}
+
+async function sessionFromGetResult(supabase, result) {
+  const { data, error } = result;
+  if (error) await recoverFromInvalidRefresh(supabase, error);
+  return data?.session ?? null;
+}
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -33,17 +57,26 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      setUserId(u?.id ?? null);
-      if (session?.access_token) {
-        fetchTier(session.access_token).then(setTier).catch(() => setTier('free'));
-      } else {
+    supabase.auth
+      .getSession()
+      .then(async (result) => {
+        const session = await sessionFromGetResult(supabase, result);
+        const u = session?.user ?? null;
+        setUser(u);
+        setUserId(u?.id ?? null);
+        if (session?.access_token) {
+          fetchTier(session.access_token).then(setTier).catch(() => setTier('free'));
+        } else {
+          setTier('free');
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setUserId(null);
         setTier('free');
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null;
@@ -64,12 +97,13 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Refresh tier when app comes to foreground (e.g. returning from Stripe checkout)
+  // Refresh tier when app comes to foreground (e.g. returning from App Store subscription UI)
   useEffect(() => {
     if (!supabase || !user) return;
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(async (result) => {
+          const session = await sessionFromGetResult(supabase, result);
           if (session?.access_token) fetchTier(session.access_token).then(setTier);
         });
       }
@@ -96,9 +130,12 @@ export function AuthProvider({ children }) {
     supabase,
     previewFreeTier,
     setPreviewFreeTier,
-    refreshTier: () => user && supabase.auth.getSession().then(({ data: { session } }) => {
+    refreshTier: async () => {
+      if (!user || !supabase) return;
+      const result = await supabase.auth.getSession();
+      const session = await sessionFromGetResult(supabase, result);
       if (session?.access_token) fetchTier(session.access_token).then(setTier);
-    }),
+    },
     setTierFromSubscription: (newTier) => {
       if (newTier === 'premium') setTier('premium');
     },

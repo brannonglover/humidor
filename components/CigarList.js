@@ -350,7 +350,7 @@ export default function CigarList({ view, onEditCigar }) {
   const [smokedOneModalCigar, setSmokedOneModalCigar] = useState(null);
   const [strengthProfileModalCigar, setStrengthProfileModalCigar] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ visible: false, title: '', message: '', buttons: [] });
-  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null });
+  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null, userId: null });
   const flatListRef = React.useRef(null);
 
   const closeConfirmModal = () => setConfirmModal((p) => ({ ...p, visible: false }));
@@ -365,7 +365,12 @@ export default function CigarList({ view, onEditCigar }) {
         Alert.alert('Sign in required', 'Please sign in to subscribe to Premium.');
         return;
       }
-      setUpgradeModal({ visible: true, message, accessToken: session.access_token });
+      setUpgradeModal({
+        visible: true,
+        message,
+        accessToken: session.access_token,
+        userId: session.user?.id,
+      });
     });
   };
 
@@ -1024,6 +1029,7 @@ export default function CigarList({ view, onEditCigar }) {
         message={upgradeModal.message}
         onClose={() => setUpgradeModal((p) => ({ ...p, visible: false }))}
         accessToken={upgradeModal.accessToken}
+        userId={upgradeModal.userId}
         tier={tier}
         refreshTier={refreshTier}
       />

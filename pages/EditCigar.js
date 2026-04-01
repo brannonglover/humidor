@@ -48,7 +48,7 @@ export default function EditCigar() {
   const [image, setImage] = useState(cigar?.image ?? '');
   const [quantity, setQuantity] = useState(String(cigar?.quantity ?? 1));
   const [dateAdded, setDateAdded] = useState(cigar?.date_added ?? '');
-  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null });
+  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null, userId: null });
 
   const scrollViewRef = useRef(null);
 
@@ -71,6 +71,7 @@ export default function EditCigar() {
           visible: true,
           message: 'Photos are a Premium feature. Subscribe for $2.99/mo to add photos to your cigars.',
           accessToken: session.access_token,
+          userId: session.user?.id,
         });
       });
       return;
@@ -373,6 +374,7 @@ export default function EditCigar() {
         message={upgradeModal.message}
         onClose={() => setUpgradeModal((p) => ({ ...p, visible: false }))}
         accessToken={upgradeModal.accessToken}
+        userId={upgradeModal.userId}
         tier={tier}
         refreshTier={refreshTier}
       />

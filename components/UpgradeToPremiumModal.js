@@ -1,25 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, Animated, Dimensions, ActivityIndicator, Alert, Linking } from 'react-native';
+import {
+  Modal,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
-import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
+import { subscribeOrManage, restoreSubscription } from '../api/subscription';
+import { openManageSubscriptions } from '../lib/iap';
+import SubscriptionLegalLinks from './SubscriptionLegalLinks';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
- * Cavaro-styled Upgrade to Premium modal matching ConfirmModal/AddToFavoritesModal theming.
- * @param {boolean} visible
- * @param {string} message - Custom message to display
- * @param {function} onClose - Called when user cancels or overlay is tapped
- * @param {string} accessToken - Supabase session access token
- * @param {string} tier - Current tier ('free' | 'premium')
- * @param {function} refreshTier - Callback to refresh tier after subscribe/restore
+ * @param {string} userId - Supabase user id (UUID for Apple appAccountToken)
  */
 export default function UpgradeToPremiumModal({
   visible,
   message = 'Subscribe to Premium for $2.99/mo to unlock this feature.',
   onClose,
   accessToken,
+  userId,
   tier,
   refreshTier,
 }) {
@@ -85,11 +92,12 @@ export default function UpgradeToPremiumModal({
   };
 
   const handleSubscribe = async () => {
-    if (!accessToken || subscribeLoading) return;
+    if (!accessToken || !userId || subscribeLoading) return;
     setSubscribeLoading(true);
     try {
-      const result = await subscribeOrManage(accessToken, tier);
+      const result = await subscribeOrManage(accessToken, tier, userId);
       if (result?.alreadySubscribed) {
+        setSubscribeLoading(false);
         Alert.alert(
           "You're already subscribed",
           'Would you like to manage your subscription?',
@@ -99,8 +107,7 @@ export default function UpgradeToPremiumModal({
               text: 'Manage subscription',
               onPress: async () => {
                 try {
-                  const url = await createPortalSession(accessToken);
-                  if (url) await Linking.openURL(url);
+                  await openManageSubscriptions();
                   refreshTier?.();
                 } catch (e) {
                   Alert.alert('Error', e.message || 'Could not open subscription management');
@@ -109,15 +116,22 @@ export default function UpgradeToPremiumModal({
             },
           ]
         );
-      } else if (typeof result === 'string') {
-        await Linking.openURL(result);
-        refreshTier?.();
-        handleClose();
+      } else if (result?.unavailable) {
+        setSubscribeLoading(false);
+        Alert.alert('Premium', result.message || 'Subscriptions are not available here.');
+      } else if (result?.started && result.outcomePromise) {
+        const out = await result.outcomePromise;
+        setSubscribeLoading(false);
+        if (out.status === 'completed') {
+          refreshTier?.();
+          handleClose();
+        } else if (out.status === 'failed') {
+          Alert.alert('Subscription', out.message || 'Could not complete purchase.');
+        }
       }
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not open checkout');
-    } finally {
       setSubscribeLoading(false);
+      Alert.alert('Error', e.message || 'Could not start checkout');
     }
   };
 
@@ -147,6 +161,7 @@ export default function UpgradeToPremiumModal({
             </View>
             <Text style={styles.title}>Upgrade to Premium</Text>
             <Text style={styles.message}>{message}</Text>
+            <SubscriptionLegalLinks />
             <View style={styles.actions}>
               <Pressable
                 style={[styles.btn, styles.cancelBtn]}

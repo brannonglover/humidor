@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../theme/colors';
+import SubscriptionLegalLinks from '../components/SubscriptionLegalLinks';
 
 const FREE_FEATURES = [
   'Up to 5 cigars',
@@ -109,6 +110,9 @@ export default function Landing({ onGetStarted, onSubscribe, onAlreadyHaveAccoun
               <Text style={styles.linkText}>Restore subscription</Text>
             </Pressable>
           )}
+
+          <View style={styles.legalLinksSpacer} />
+          <SubscriptionLegalLinks style={styles.legalLinks} compact />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -129,6 +133,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 48,
+    flexGrow: 1,
   },
   hero: {
     alignItems: 'center',
@@ -178,7 +183,14 @@ const styles = StyleSheet.create({
   },
   tiers: {
     gap: 14,
-    marginBottom: 24,
+    marginBottom: 8,
+  },
+  legalLinksSpacer: {
+    flexGrow: 1,
+    minHeight: 48,
+  },
+  legalLinks: {
+    marginTop: 8,
   },
   tierCard: {
     backgroundColor: colors.cardBg,

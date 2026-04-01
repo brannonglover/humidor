@@ -1,0 +1,8 @@
+{
+  "android": {
+    "package": "com.brannonglover.server"
+  },
+  "ios": {
+    "bundleIdentifier": "com.brannonglover.server"
+  }
+}

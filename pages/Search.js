@@ -10,18 +10,19 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Alert,
-  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { searchReviewsByTaste, getTopReviewedCigars } from '../api/reviews';
 import { fetchCatalog } from '../api/catalog';
-import { subscribeOrManage, createPortalSession, restoreSubscription } from '../api/subscription';
+import { subscribeOrManage, restoreSubscription } from '../api/subscription';
+import { openManageSubscriptions } from '../lib/iap';
 import { db } from '../db';
 import { COMMON_FLAVORS } from '../components/StrengthProfileModal';
 import { useAuth } from '../context/AuthContext';
 import { trackEvent } from '../lib/analytics';
 import colors from '../theme/colors';
+import SubscriptionLegalLinks from '../components/SubscriptionLegalLinks';
 
 function filterCatalogByTaste(catalog, keywords) {
   if (!keywords?.length || !catalog?.length) return [];
@@ -189,17 +190,36 @@ export default function Search({ navigation }) {
       return;
     }
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
+    if (!session?.access_token || !session.user?.id) {
       Alert.alert('Sign in required', 'Please sign in to upgrade to premium.');
       return;
     }
     try {
-      const result = await subscribeOrManage(session.access_token, tier);
-      if (result?.alreadySubscribed) return;
-      if (typeof result === 'string') await Linking.openURL(result);
-      refreshTier?.();
+      const result = await subscribeOrManage(session.access_token, tier, session.user.id);
+      if (result?.alreadySubscribed) {
+        Alert.alert(
+          "You're already subscribed",
+          'Open subscription management to change or cancel.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Manage', onPress: () => openManageSubscriptions().then(() => refreshTier?.()) },
+          ]
+        );
+        return;
+      }
+      if (result?.unavailable) {
+        Alert.alert('Premium', result.message || 'Not available on this device.');
+        return;
+      }
+      if (result?.started && result.outcomePromise) {
+        const out = await result.outcomePromise;
+        refreshTier?.();
+        if (out.status === 'failed') {
+          Alert.alert('Subscribe failed', out.message || 'Could not verify subscription.');
+        }
+      }
     } catch (err) {
-      Alert.alert('Error', err.message || 'Could not open subscription');
+      Alert.alert('Error', err.message || 'Could not start subscription');
     }
   };
 
@@ -360,6 +380,7 @@ export default function Search({ navigation }) {
                 </View>
                 <MaterialCommunityIcons name="lock" size={24} color={colors.textMuted} />
               </View>
+              <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
               <Pressable style={styles.upgradeCard} onPress={handleUpgradePress}>
                 <Text style={styles.upgradeCardText}>Subscribe for $2.99/mo to see top cigars</Text>
                 <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
@@ -380,6 +401,7 @@ export default function Search({ navigation }) {
                   <Text style={styles.limitReachedText}>
                     Free users get 3 searches per day. Subscribe for $2.99/mo for unlimited searches.
                   </Text>
+                  <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
                   <Pressable style={styles.upgradeBtn} onPress={handleUpgradePress}>
                     <Text style={styles.upgradeBtnText}>Subscribe for $2.99/mo</Text>
                   </Pressable>
@@ -673,6 +695,10 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
+  },
+  subscriptionLegalInline: {
+    alignSelf: 'stretch',
+    marginBottom: 4,
   },
   upgradeCard: {
     flexDirection: 'row',

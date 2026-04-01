@@ -11,24 +11,25 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import FeedbackBtn from '../components/FeedbackBtn';
 import { getDrinkPairing } from '../api/pairing';
-import { subscribeOrManage, createPortalSession, getSubscriptionStatus, restoreSubscription } from '../api/subscription';
+import { subscribeOrManage, getSubscriptionStatus, restoreSubscription } from '../api/subscription';
+import { openManageSubscriptions } from '../lib/iap';
 import { API_BASE_URL } from '../api/config';
 import { useAuth } from '../context/AuthContext';
 import { trackEvent } from '../lib/analytics';
 import colors from '../theme/colors';
 import { KEYBOARD_ACCESSORY_ID } from '../components/KeyboardAccessory';
+import SubscriptionLegalLinks from '../components/SubscriptionLegalLinks';
 
 function Pairing() {
   const { tier, supabase, refreshTier } = useAuth();
   const [cigar, setCigar] = useState('');
 
-  // Refresh tier when screen gains focus (e.g. after returning from Stripe)
+  // Refresh tier when screen gains focus (e.g. after returning from subscription UI)
   useFocusEffect(
     React.useCallback(() => {
       refreshTier?.();
@@ -51,7 +52,7 @@ function Pairing() {
     }
     setCheckoutLoading(true);
     try {
-      const result = await subscribeOrManage(session.access_token, tier);
+      const result = await subscribeOrManage(session.access_token, tier, session.user?.id);
       if (result?.alreadySubscribed) {
         Alert.alert(
           "You're already subscribed",
@@ -62,8 +63,7 @@ function Pairing() {
               text: 'Manage subscription',
               onPress: async () => {
                 try {
-                  const url = await createPortalSession(session.access_token);
-                  if (url) await Linking.openURL(url);
+                  await openManageSubscriptions();
                   refreshTier?.();
                 } catch (e) {
                   Alert.alert('Error', e.message || 'Could not open subscription management');
@@ -72,12 +72,17 @@ function Pairing() {
             },
           ]
         );
-      } else if (typeof result === 'string') {
-        await Linking.openURL(result);
+      } else if (result?.unavailable) {
+        Alert.alert('Premium', result.message || 'Subscriptions are not available on this device.');
+      } else if (result?.started && result.outcomePromise) {
+        const out = await result.outcomePromise;
         refreshTier?.();
+        if (out.status === 'failed') {
+          Alert.alert('Subscribe failed', out.message || 'Could not verify subscription.');
+        }
       }
     } catch (err) {
-      const msg = err.message || 'Could not open checkout';
+      const msg = err.message || 'Could not start subscription';
       Alert.alert(
         'Subscribe failed',
         msg + '\n\nTap "Check setup" to verify server configuration.',
@@ -89,7 +94,7 @@ function Pairing() {
               try {
                 const status = await getSubscriptionStatus();
                 if (status.configured) {
-                  Alert.alert('Setup OK', 'Server has all required env vars. The error may be from Stripe or auth. Check Railway logs.');
+                  Alert.alert('Setup OK', 'Server has App Store API env vars. If errors persist, check Railway logs and App Store Connect.');
                 } else {
                   const missing = Array.isArray(status.missing) ? status.missing : [];
                   const missingList = missing.length > 0
@@ -176,6 +181,7 @@ function Pairing() {
                 Get AI-powered drink suggestions for every cigar. Subscribe to Premium for $2.99/mo.
               </Text>
             </View>
+            <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
             <Pressable
               style={[styles.button, checkoutLoading && styles.buttonDisabled]}
               onPress={handleSubscribe}
@@ -371,7 +377,11 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     padding: 24,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  subscriptionLegalInline: {
+    alignSelf: 'stretch',
+    marginBottom: 12,
   },
   upgradeIcon: {
     marginBottom: 16,

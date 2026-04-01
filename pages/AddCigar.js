@@ -52,7 +52,7 @@ export default function AddCigar() {
   const { tier, supabase, refreshTier } = useAuth();
   const [showCustom, setShowCustom] = useState(false);
   const [cigarCount, setCigarCount] = useState(0);
-  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null });
+  const [upgradeModal, setUpgradeModal] = useState({ visible: false, message: '', accessToken: null, userId: null });
   const enforceLimit = tier === 'free' && supabase;
 
   // Catalog selection state
@@ -193,6 +193,7 @@ export default function AddCigar() {
           visible: true,
           message: 'Photos are a Premium feature. Subscribe for $2.99/mo to add photos to your cigars.',
           accessToken: session.access_token,
+          userId: session.user?.id,
         });
       });
       return;
@@ -731,6 +732,7 @@ export default function AddCigar() {
         message={upgradeModal.message}
         onClose={() => setUpgradeModal((p) => ({ ...p, visible: false }))}
         accessToken={upgradeModal.accessToken}
+        userId={upgradeModal.userId}
         tier={tier}
         refreshTier={refreshTier}
       />

@@ -10,7 +10,7 @@ async function init() {
     CREATE TABLE IF NOT EXISTS user_profiles (
       id UUID PRIMARY KEY,
       tier TEXT NOT NULL DEFAULT 'free' CHECK (tier IN ('free', 'premium')),
-      stripe_customer_id TEXT,
+      apple_original_transaction_id TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
@@ -19,7 +19,9 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_user_profiles_tier ON user_profiles(tier)
   `);
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_user_profiles_stripe ON user_profiles(stripe_customer_id)
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_apple_otid
+    ON user_profiles(apple_original_transaction_id)
+    WHERE apple_original_transaction_id IS NOT NULL
   `);
   console.log('user_profiles table ready');
   process.exit(0);

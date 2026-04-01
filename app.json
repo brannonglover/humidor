@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.brannonglover.cavaro",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["https", "http"]
       }
     },
     "android": {
@@ -56,11 +57,19 @@
           "photosPermission": "Allow Cavaro to access your photos to add cigar images.",
           "cameraPermission": "Allow Cavaro to use your camera to take photos of cigars."
         }
-      ]
+      ],
+      "react-native-iap"
     ],
     "extra": {
       "eas": {
         "projectId": "b9407779-7a2d-46f7-8626-3a5091f02052"
+      },
+      "legal": {
+        "termsOfUseUrl": "https://cavaroapp.com/terms",
+        "privacyPolicyUrl": "https://cavaroapp.com/privacy"
+      },
+      "iap": {
+        "premiumProductId": "com.gloverlabs.cavaro.monthly_premium"
       }
     },
     "owner": "brannonglover"

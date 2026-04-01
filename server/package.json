@@ -10,11 +10,15 @@
     "init-user-profiles": "node scripts/init-user-profiles.js",
     "init-reviews": "node scripts/initReviews.js",
     "seed-reviews": "node scripts/seedReviews.js",
-    "add-line-column": "node scripts/addLineColumn.js"
+    "add-line-column": "node scripts/addLineColumn.js",
+    "add-apple-iap-column": "node scripts/add-apple-iap-column.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@apple/app-store-server-library": "^3.0.0",
     "@supabase/supabase-js": "^2.45.0",
     "colors": "^1.4.0",
     "cors": "^2.8.5",
@@ -25,6 +29,8 @@
     "nodemailer": "^8.0.1",
     "nodemon": "^3.1.9",
     "pg": "^8.19.0",
-    "stripe": "^14.25.0"
+    "expo": "~52.0.49",
+    "react": "18.3.1",
+    "react-native": "0.76.9"
   }
 }
