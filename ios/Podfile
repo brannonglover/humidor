@@ -73,6 +73,17 @@ target 'Cavaro' do
           end
         end
       end
+
+      # Xcode 26 defaults to Swift 6 mode, which turns previously-warning
+      # non-exhaustive switch statements (on non-frozen Apple enums) into
+      # hard errors. SDK 52 pods were authored for Swift 5, so pin them
+      # to Swift 5 to keep the old warning-only behaviour.
+      target.build_configurations.each do |build_config|
+        if build_config.build_settings['SWIFT_VERSION'].nil? ||
+           build_config.build_settings['SWIFT_VERSION'].to_f >= 6.0
+          build_config.build_settings['SWIFT_VERSION'] = '5.0'
+        end
+      end
     end
   end
 end
