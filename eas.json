@@ -8,13 +8,13 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-16.4"
+        "image": "macos-sequoia-15.5-xcode-26.0"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-16.4"
+        "image": "macos-sequoia-15.5-xcode-26.0"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://cavaro-staging.up.railway.app",
@@ -24,7 +24,7 @@
     },
     "production": {
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-16.4"
+        "image": "macos-sequoia-15.5-xcode-26.0"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://cavaro-production-9755.up.railway.app",
