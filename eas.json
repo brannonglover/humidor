@@ -6,10 +6,16 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-16.4"
+      }
     },
     "preview": {
       "distribution": "internal",
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-16.4"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://cavaro-staging.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://srucfmfykauxdnwyyaav.supabase.co",
@@ -17,7 +23,9 @@
       }
     },
     "production": {
-      "autoIncrement": true,
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-16.4"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://cavaro-production-9755.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://srucfmfykauxdnwyyaav.supabase.co",
