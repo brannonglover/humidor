@@ -380,7 +380,6 @@ export default function Search({ navigation }) {
                 </View>
                 <MaterialCommunityIcons name="lock" size={24} color={colors.textMuted} />
               </View>
-              <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
               <Pressable style={styles.upgradeCard} onPress={handleUpgradePress}>
                 <Text style={styles.upgradeCardText}>Subscribe for $2.99/mo to see top cigars</Text>
                 <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
@@ -388,6 +387,7 @@ export default function Search({ navigation }) {
               <Pressable style={styles.restoreLink} onPress={handleRestorePress}>
                 <Text style={styles.restoreLinkText}>Already have a subscription? Restore it</Text>
               </Pressable>
+              <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
             </View>
           )}
 
@@ -401,13 +401,13 @@ export default function Search({ navigation }) {
                   <Text style={styles.limitReachedText}>
                     Free users get 3 searches per day. Subscribe for $2.99/mo for unlimited searches.
                   </Text>
-                  <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
                   <Pressable style={styles.upgradeBtn} onPress={handleUpgradePress}>
                     <Text style={styles.upgradeBtnText}>Subscribe for $2.99/mo</Text>
                   </Pressable>
                   <Pressable style={styles.restoreLink} onPress={handleRestorePress}>
                     <Text style={styles.restoreLinkText}>Restore subscription</Text>
                   </Pressable>
+                  <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
                 </View>
               ) : searchSignInRequired ? (
                 <Text style={styles.emptyText}>Sign in to search community reviews.</Text>
@@ -698,7 +698,8 @@ const styles = StyleSheet.create({
   },
   subscriptionLegalInline: {
     alignSelf: 'stretch',
-    marginBottom: 4,
+    marginTop: 8,
+    marginBottom: 0,
   },
   upgradeCard: {
     flexDirection: 'row',

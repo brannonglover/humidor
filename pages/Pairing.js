@@ -181,7 +181,6 @@ function Pairing() {
                 Get AI-powered drink suggestions for every cigar. Subscribe to Premium for $2.99/mo.
               </Text>
             </View>
-            <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
             <Pressable
               style={[styles.button, checkoutLoading && styles.buttonDisabled]}
               onPress={handleSubscribe}
@@ -207,6 +206,7 @@ function Pairing() {
                 <Text style={styles.restoreLinkText}>Already have a subscription? Restore it</Text>
               )}
             </Pressable>
+            <SubscriptionLegalLinks compact style={styles.subscriptionLegalInline} />
           </View>
         </SafeAreaView>
       </View>
@@ -381,7 +381,8 @@ const styles = StyleSheet.create({
   },
   subscriptionLegalInline: {
     alignSelf: 'stretch',
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 0,
   },
   upgradeIcon: {
     marginBottom: 16,
