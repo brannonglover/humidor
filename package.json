@@ -5,6 +5,7 @@
   "scripts": {
     "version:sync": "node scripts/sync-version.js",
     "version": "node scripts/sync-version.js",
+    "eas-build-pre-install": "node scripts/sync-version.js --with-build-number",
     "postinstall": "node scripts/apply-local-patches.js",
     "start": "expo start",
     "start:device": "REACT_NATIVE_PACKAGER_HOSTNAME=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo localhost) expo start",

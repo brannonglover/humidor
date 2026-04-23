@@ -6,7 +6,7 @@ function getBuildNumber() {
   if (process.env.APP_BUILD_NUMBER) return process.env.APP_BUILD_NUMBER;
   const now = new Date();
   const pad = (n) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
 // Android versionCode must be a positive 32-bit integer.
