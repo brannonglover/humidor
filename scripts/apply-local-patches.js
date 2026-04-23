@@ -1,0 +1,75 @@
+const fs = require("fs");
+const path = require("path");
+
+const repoRoot = path.resolve(__dirname, "..");
+
+function applyReplacement({ name, relativePath, before, after, skipIfContains }) {
+  const filePath = path.join(repoRoot, relativePath);
+
+  if (!fs.existsSync(filePath)) {
+    console.log(`[patches] skipped ${name} (missing ${relativePath})`);
+    return;
+  }
+
+  const original = fs.readFileSync(filePath, "utf8");
+
+  if (skipIfContains && original.includes(skipIfContains)) {
+    console.log(`[patches] already applied ${name}`);
+    return;
+  }
+
+  if (!original.includes(before)) {
+    console.log(`[patches] skipped ${name} (expected snippet not found)`);
+    return;
+  }
+
+  const updated = original.replace(before, after);
+
+  if (updated === original) {
+    console.log(`[patches] already applied ${name}`);
+    return;
+  }
+
+  fs.writeFileSync(filePath, updated);
+  console.log(`[patches] applied ${name}`);
+}
+
+applyReplacement({
+  name: "expo-dev-menu simulator detection",
+  relativePath: "node_modules/expo-dev-menu/ios/DevMenuViewController.swift",
+  before: [
+    "  private func initialProps() -> [String: Any] {",
+    "    let isSimulator = TARGET_IPHONE_SIMULATOR > 0",
+  ].join("\n"),
+  after: [
+    "  private func initialProps() -> [String: Any] {",
+    "#if targetEnvironment(simulator)",
+    "    let isSimulator = true",
+    "#else",
+    "    let isSimulator = false",
+    "#endif",
+  ].join("\n"),
+  skipIfContains: "#if targetEnvironment(simulator)",
+});
+
+applyReplacement({
+  name: "expo-localization Xcode 26 calendar fallback",
+  relativePath: "node_modules/expo-localization/ios/LocalizationModule.swift",
+  before: [
+    "    case .republicOfChina:",
+    "      return \"roc\"",
+    "    case .iso8601:",
+    "      return \"iso8601\"",
+    "    }",
+  ].join("\n"),
+  after: [
+    "    case .republicOfChina:",
+    "      return \"roc\"",
+    "    case .iso8601:",
+    "      return \"iso8601\"",
+    "    @unknown default:",
+    "      return \"iso8601\"",
+    "    }",
+  ].join("\n"),
+  skipIfContains: "@unknown default:",
+});
