@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { isAuthRetryableFetchError } from '@supabase/auth-js';
-import { setUserId } from '../lib/analytics';
+import { setUserId, initAnalytics } from '../lib/analytics';
 import AsyncStorage from 'expo-sqlite/kv-store';
 import { API_BASE_URL } from '../api/config';
 import { hydrateUserData } from '../lib/userCigarsSync';
@@ -74,10 +74,11 @@ export function AuthProvider({ children }) {
     supabase.auth
       .getSession()
       .then(async (result) => {
+        await initAnalytics();
         const session = await sessionFromGetResult(supabase, result);
         const u = session ? await fetchFreshUser(supabase) : null;
         setUser(u);
-        setUserId(u?.id ?? null);
+        setUserId(u?.id ?? null, { email: u?.email });
         if (session?.access_token) {
           fetchTier(session.access_token, u).then(setTier).catch(() => setTier('free'));
         } else {
@@ -103,7 +104,7 @@ export function AuthProvider({ children }) {
 
       const u = session?.user ?? null;
       setUser(u);
-      setUserId(u?.id ?? null);
+      setUserId(u?.id ?? null, { email: u?.email });
       if (session?.access_token) {
         try {
           const t = await fetchTier(session.access_token, u);

@@ -48,7 +48,15 @@ If the key is not set, analytics are disabled (no-op). The app works normally wi
 
 ## User identification
 
-When a user signs in (Supabase), their `user.id` is used as the distinct ID for analytics. Anonymous users are tracked with `distinct_id: 'anonymous'`.
+Each device is assigned a persistent anonymous ID (UUID v4) on first launch, stored in `AsyncStorage`. Pre-auth events (screen views on Landing/Login/Signup, `landing_cta`, etc.) are tracked under this device ID so each person gets their own PostHog profile even before signing in.
+
+When a user signs in (Supabase), `setUserId` sends a PostHog `$identify` event that merges the anonymous device profile into the authenticated user profile (`user.id`). This means:
+
+- Pre-login activity is attributed to the correct user retroactively.
+- Each device has its own anonymous profile (no more shared "anonymous" bucket).
+- PostHog's person merge handles the join automatically.
+
+`initAnalytics()` is called during `AuthProvider` startup (before `setUserId`) to ensure the anonymous ID is available before any events fire.
 
 ## Most popular cigars
 
